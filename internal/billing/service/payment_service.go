@@ -1,0 +1,118 @@
+package service
+
+import (
+	"context"
+
+	"github.com/charmingruby/new/internal/billing/client"
+	"github.com/charmingruby/new/internal/billing/model"
+	"github.com/charmingruby/new/internal/billing/repository"
+	"github.com/charmingruby/new/internal/shared/core"
+	"github.com/charmingruby/new/internal/shared/customerr"
+	"github.com/charmingruby/new/pkg/o11y"
+)
+
+type paymentService struct {
+	txManager    core.TransactionManager[repository.Transaction]
+	offeringRepo repository.OfferingRepository
+	paymentRepo  repository.PaymentRepository
+	notifier     client.NotificationClient
+}
+
+func NewPaymentService(
+	txManager core.TransactionManager[repository.Transaction],
+	offeringRepo repository.OfferingRepository,
+	paymentRepo repository.PaymentRepository,
+	notifier client.NotificationClient,
+) *paymentService {
+	return &paymentService{
+		txManager:    txManager,
+		offeringRepo: offeringRepo,
+		paymentRepo:  paymentRepo,
+		notifier:     notifier,
+	}
+}
+
+func (s *paymentService) CreatePayment(ctx context.Context, input CreatePaymentInput) (CreatePaymentOutput, error) {
+	offering, err := s.offeringRepo.FindByID(ctx, input.OfferingID)
+	if err != nil {
+		return CreatePaymentOutput{}, customerr.Integration(err)
+	}
+
+	if offering == nil {
+		return CreatePaymentOutput{}, customerr.NotFound("offering not found")
+	}
+
+	var paymentID string
+	created := false
+
+	err = s.txManager.Transact(func(tx repository.Transaction) error {
+		existing, err := tx.PaymentRepo.FindByExternalID(ctx, input.ExternalID)
+		if err != nil {
+			return customerr.Integration(err)
+		}
+
+		if existing != nil {
+			paymentID = existing.ID
+			return nil
+		}
+
+		payment := model.NewPayment(model.PaymentInput{
+			UserID:        input.UserID,
+			OfferingID:    input.OfferingID,
+			ExternalID:    input.ExternalID,
+			ChargedAmount: input.ChargedAmount,
+		})
+
+		payment.MarkAsPaid()
+
+		if err := tx.PaymentRepo.Create(ctx, payment); err != nil {
+			return customerr.Integration(err)
+		}
+
+		paymentID = payment.ID
+		created = true
+
+		return nil
+	})
+	if err != nil {
+		return CreatePaymentOutput{}, err
+	}
+
+	if created {
+		if err := s.notifier.Send(ctx, client.SendNotificationInput{
+			UserID:  input.UserID,
+			Message: "payment confirmed",
+		}); err != nil {
+			o11y.LoggerFromContext(ctx).Warn("notification send failed", "error", err)
+		}
+	}
+
+	return CreatePaymentOutput{ID: paymentID}, nil
+}
+
+func (s *paymentService) GetPayment(ctx context.Context, input GetPaymentInput) (*model.Payment, error) {
+	payment, err := s.paymentRepo.FindByID(ctx, input.PaymentID)
+	if err != nil {
+		return nil, customerr.Integration(err)
+	}
+
+	if payment == nil {
+		return nil, customerr.NotFound("payment not found")
+	}
+
+	return payment, nil
+}
+
+func (s *paymentService) ListPayments(ctx context.Context, input ListPaymentsInput) (ListPaymentsOutput, error) {
+	params := core.DefaultPaginationParams(input.Page)
+
+	payments, total, err := s.paymentRepo.ListByUserID(ctx, input.UserID, params)
+	if err != nil {
+		return ListPaymentsOutput{}, customerr.Integration(err)
+	}
+
+	return ListPaymentsOutput{
+		Payments: payments,
+		Total:    total,
+	}, nil
+}
