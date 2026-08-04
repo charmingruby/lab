@@ -24,8 +24,12 @@ var (
 
 func testRequest(t *testing.T, method, path, body string) *http.Request {
 	t.Helper()
+
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+
 	req.Header.Set("Content-Type", "application/json")
+
 	ctx := o11y.WithLogger(req.Context(), slog.New(slog.DiscardHandler))
+
 	return req.WithContext(ctx)
 }
