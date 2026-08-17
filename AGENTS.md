@@ -43,20 +43,11 @@ Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains
 
 ### Versioning
 
-- **Unit of versioning: the endpoint file, not the folder.** A breaking change to `create_payment_v1.go` adds `create_payment_v2.go` beside it. The rest of `endpoint/` stays on v1.
-- **`route.go` never carries a version suffix.** It's the single registrar mapping every endpoint version to its route (`/api/v1/...`, `/api/v2/...`). Deprecate `/v1` by removing its registration once callers migrate — don't mutate `/v1`'s behavior in place.
-- **Non-HTTP protocols version the same way**, at the caller-facing boundary: gRPC registers `ServiceV1`/`ServiceV2`; a queue consumer binds versioned events or queue names.
-- **Never version `model/`, `usecase/`, or `repository/`.** These stay single-version regardless of how many API versions call them.
+Breaking or deprecating an API version, or versioning a gRPC/queue boundary? Read [docs/versioning.md](docs/versioning.md).
 
 ### Cross-module reads
 
-A module never imports another module's use case. To read another module's data, the consumer depends on a **client port** owned by the producer. The producer owns three pieces per exposed read:
-
-- **`<domain>/client/`** — the port: a read interface the consumer codes against (e.g. `PaymentReader.GetPayment`). Also holds outbound ports the module itself consumes (e.g. `NotificationClient`, adapter in `client/console`).
-- **`<domain>/public/`** — the adapter: a thin struct over a use case that forwards calls into the port shape (e.g. `public.NewPaymentReader(getPayment)`, whose `GetPayment` delegates to `getPayment.GetPayment`).
-- **`<domain>/public.go`** — the assembly: a module-level constructor (e.g. `NewPaymentReader(db)`) that builds repositories + use case and returns the adapter typed as the `client` port.
-
-The consumer codes only against the produced `client` port. Mocks are generated from it into `test/<domain>/mocks`.
+Reading another module's data? Read [docs/cross-module-reads.md](docs/cross-module-reads.md).
 
 ## Rules
 
