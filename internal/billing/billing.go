@@ -6,9 +6,8 @@ import (
 
 	"github.com/charmingruby/new/internal/billing/client/console"
 	"github.com/charmingruby/new/internal/billing/http"
-	"github.com/charmingruby/new/internal/billing/http/handler"
 	"github.com/charmingruby/new/internal/billing/repository/postgres"
-	"github.com/charmingruby/new/internal/billing/service"
+	"github.com/charmingruby/new/internal/billing/usecase"
 )
 
 func New(
@@ -27,13 +26,16 @@ func New(
 		return err
 	}
 
-	catalogService := service.NewCatalogService(offeringRepo)
+	ep := http.SetupEndpoints(
+		usecase.NewCreateOfferingUsecase(offeringRepo),
+		usecase.NewCreatePaymentUsecase(txManager, offeringRepo, paymentRepo, console.NewNotifier()),
+		usecase.NewGetPaymentUsecase(paymentRepo),
+		usecase.NewListPaymentsUsecase(paymentRepo),
+	)
 
-	paymentService := service.NewPaymentService(txManager, offeringRepo, paymentRepo, console.NewNotifier())
-
-	h := handler.New(catalogService, paymentService)
-
-	http.RegisterRoutes(r, h)
+	http.RegisterRoutes(
+		r, ep,
+	)
 
 	return nil
 }

@@ -1,9 +1,9 @@
-package handler
+package endpoint
 
 import (
 	"net/http"
 
-	"github.com/charmingruby/new/internal/billing/service"
+	"github.com/charmingruby/new/internal/billing/usecase"
 	"github.com/charmingruby/new/internal/shared/httpx"
 )
 
@@ -14,11 +14,11 @@ type CreatePaymentRequest struct {
 	ChargedAmount int    `json:"charged_amount" validate:"required"`
 }
 
-type CreatePaymentResponse struct {
+type CreatePaymentV1Response struct {
 	ID string `json:"id"`
 }
 
-func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) CreatePaymentV1(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	request, err := httpx.ParseRequest[CreatePaymentRequest](w, r)
@@ -26,7 +26,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := h.paymentService.CreatePayment(ctx, service.CreatePaymentInput{
+	output, err := e.createPayment.CreatePayment(ctx, usecase.CreatePaymentInput{
 		UserID:        request.UserID,
 		OfferingID:    request.OfferingID,
 		ExternalID:    request.ExternalID,
@@ -37,7 +37,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteCreatedResponse(w, CreatePaymentResponse{
+	httpx.WriteCreatedResponse(w, CreatePaymentV1Response{
 		ID: output.ID,
 	})
 }

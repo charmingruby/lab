@@ -1,19 +1,19 @@
-package handler
+package endpoint
 
 import (
 	"net/http"
 
 	"github.com/charmingruby/new/internal/billing/model"
-	"github.com/charmingruby/new/internal/billing/service"
+	"github.com/charmingruby/new/internal/billing/usecase"
 	"github.com/charmingruby/new/internal/shared/httpx"
 )
 
-type ListPaymentsResponse struct {
+type ListPaymentsV1Response struct {
 	Payments []model.Payment `json:"payments"`
 	Total    int             `json:"total"`
 }
 
-func (h *Handler) ListPayments(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) ListPaymentsV1(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := httpx.GetQueryParam(r, "user_id")
@@ -24,7 +24,7 @@ func (h *Handler) ListPayments(w http.ResponseWriter, r *http.Request) {
 
 	page := httpx.GetPageQueryParam(r)
 
-	output, err := h.paymentService.ListPayments(ctx, service.ListPaymentsInput{
+	output, err := e.listPayments.ListPayments(ctx, usecase.ListPaymentsInput{
 		UserID: userID,
 		Page:   page,
 	})
@@ -33,7 +33,7 @@ func (h *Handler) ListPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteOKResponse(w, ListPaymentsResponse{
+	httpx.WriteOKResponse(w, ListPaymentsV1Response{
 		Payments: output.Payments,
 		Total:    output.Total,
 	})

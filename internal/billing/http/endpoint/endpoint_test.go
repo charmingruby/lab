@@ -1,6 +1,7 @@
-package handler_test
+package endpoint_test
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ var (
 func testRequest(t *testing.T, method, path, body string) *http.Request {
 	t.Helper()
 
-	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
 
 	req.Header.Set("Content-Type", "application/json")
 

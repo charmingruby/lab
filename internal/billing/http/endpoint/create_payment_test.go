@@ -1,4 +1,4 @@
-package handler_test
+package endpoint_test
 
 import (
 	"encoding/json"
@@ -10,18 +10,18 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/charmingruby/new/internal/billing/http/handler"
-	"github.com/charmingruby/new/internal/billing/service"
+	"github.com/charmingruby/new/internal/billing/http/endpoint"
+	"github.com/charmingruby/new/internal/billing/usecase"
 	"github.com/charmingruby/new/test/billing/mocks"
 )
 
-func TestHandler_CreatePayment(t *testing.T) {
+func TestEndpoint_CreatePaymentV1(t *testing.T) {
 	type response struct {
 		ID string `json:"id"`
 	}
 
 	tests := []struct {
-		setupMocks     func(*mocks.PaymentService)
+		setupMocks     func(*mocks.CreatePaymentUsecase)
 		name           string
 		body           string
 		expectedID     string
@@ -30,13 +30,13 @@ func TestHandler_CreatePayment(t *testing.T) {
 		{
 			name: "success",
 			body: `{"user_id":"user-123","offering_id":"offering-123","external_id":"pay_123","charged_amount":2999}`,
-			setupMocks: func(m *mocks.PaymentService) {
-				m.On("CreatePayment", mock.Anything, service.CreatePaymentInput{
+			setupMocks: func(m *mocks.CreatePaymentUsecase) {
+				m.On("CreatePayment", mock.Anything, usecase.CreatePaymentInput{
 					UserID:        "user-123",
 					OfferingID:    "offering-123",
 					ExternalID:    "pay_123",
 					ChargedAmount: 2999,
-				}).Return(service.CreatePaymentOutput{ID: "payment-123"}, nil)
+				}).Return(usecase.CreatePaymentOutput{ID: "payment-123"}, nil)
 			},
 			expectedStatus: http.StatusCreated,
 			expectedID:     "payment-123",
@@ -50,9 +50,9 @@ func TestHandler_CreatePayment(t *testing.T) {
 		{
 			name: "not found error",
 			body: `{"user_id":"user-123","offering_id":"unknown","external_id":"pay_123","charged_amount":2999}`,
-			setupMocks: func(m *mocks.PaymentService) {
+			setupMocks: func(m *mocks.CreatePaymentUsecase) {
 				m.On("CreatePayment", mock.Anything, mock.Anything).
-					Return(service.CreatePaymentOutput{}, errNotFound)
+					Return(usecase.CreatePaymentOutput{}, errNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -60,16 +60,21 @@ func TestHandler_CreatePayment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockPayment := new(mocks.PaymentService)
+			mockCreatePayment := new(mocks.CreatePaymentUsecase)
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockPayment)
+				tt.setupMocks(mockCreatePayment)
 			}
 
-			h := handler.New(new(mocks.CatalogService), mockPayment)
+			h := endpoint.New(
+				new(mocks.CreateOfferingUsecase),
+				mockCreatePayment,
+				new(mocks.GetPaymentUsecase),
+				new(mocks.ListPaymentsUsecase),
+			)
 			w := httptest.NewRecorder()
 			req := testRequest(t, http.MethodPost, "/v1/payments/", tt.body)
 
-			h.CreatePayment(w, req)
+			h.CreatePaymentV1(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedID != "" {
@@ -77,7 +82,7 @@ func TestHandler_CreatePayment(t *testing.T) {
 				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 				assert.Equal(t, tt.expectedID, resp.ID)
 			}
-			mockPayment.AssertExpectations(t)
+			mockCreatePayment.AssertExpectations(t)
 		})
 	}
 }

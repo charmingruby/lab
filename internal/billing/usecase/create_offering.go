@@ -1,4 +1,4 @@
-package service
+package usecase
 
 import (
 	"context"
@@ -8,17 +8,30 @@ import (
 	"github.com/charmingruby/new/internal/shared/customerr"
 )
 
-type catalogService struct {
+type CreateOfferingUsecase interface {
+	CreateOffering(ctx context.Context, input CreateOfferingInput) (CreateOfferingOutput, error)
+}
+
+type CreateOfferingInput = model.OfferingInput
+
+type CreateOfferingOutput struct {
+	ID string
+}
+
+type createOfferingUsecase struct {
 	offeringRepo repository.OfferingRepository
 }
 
-func NewCatalogService(offeringRepo repository.OfferingRepository) *catalogService {
-	return &catalogService{
+func NewCreateOfferingUsecase(offeringRepo repository.OfferingRepository) *createOfferingUsecase {
+	return &createOfferingUsecase{
 		offeringRepo: offeringRepo,
 	}
 }
 
-func (c *catalogService) CreateOffering(ctx context.Context, input CreateOfferingInput) (CreateOfferingOutput, error) {
+func (c *createOfferingUsecase) CreateOffering(
+	ctx context.Context,
+	input CreateOfferingInput,
+) (CreateOfferingOutput, error) {
 	offering, err := c.offeringRepo.FindByName(ctx, input.Name)
 	if err != nil {
 		return CreateOfferingOutput{}, customerr.Integration(err)

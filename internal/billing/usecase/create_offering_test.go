@@ -1,4 +1,4 @@
-package service_test
+package usecase_test
 
 import (
 	"context"
@@ -10,17 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/new/internal/billing/model"
-	"github.com/charmingruby/new/internal/billing/service"
+	"github.com/charmingruby/new/internal/billing/usecase"
 	"github.com/charmingruby/new/internal/shared/customerr"
 	"github.com/charmingruby/new/test/billing/mocks"
 )
 
-func TestCatalogService_CreateOffering(t *testing.T) {
+func TestCreateOfferingUsecase(t *testing.T) {
 	tests := []struct {
 		setupMocks func(*mocks.OfferingRepository)
-		assert     func(*testing.T, service.CreateOfferingOutput, error)
+		assert     func(*testing.T, usecase.CreateOfferingOutput, error)
 		name       string
-		input      service.CreateOfferingInput
+		input      usecase.CreateOfferingInput
 	}{
 		{
 			name: "success",
@@ -32,7 +32,7 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 				offeringRepo.On("FindByName", mock.Anything, "Premium Plan").Return(nil, nil)
 				offeringRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Offering")).Return(nil)
 			},
-			assert: func(t *testing.T, out service.CreateOfferingOutput, err error) {
+			assert: func(t *testing.T, out usecase.CreateOfferingOutput, err error) {
 				require.NoError(t, err)
 				assert.NotEmpty(t, out.ID)
 			},
@@ -50,7 +50,7 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 				})
 				offeringRepo.On("FindByName", mock.Anything, "Existing Plan").Return(existing, nil)
 			},
-			assert: func(t *testing.T, _ service.CreateOfferingOutput, err error) {
+			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
 				require.Error(t, err)
 				assert.True(t, customerr.IsConflict(err))
 			},
@@ -64,7 +64,7 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 			setupMocks: func(offeringRepo *mocks.OfferingRepository) {
 				offeringRepo.On("FindByName", mock.Anything, "Test").Return(nil, errors.New("db connection failed"))
 			},
-			assert: func(t *testing.T, _ service.CreateOfferingOutput, err error) {
+			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
 				require.Error(t, err)
 				assert.True(t, customerr.IsInvalidOperation(err))
 			},
@@ -78,7 +78,7 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 			setupMocks: func(offeringRepo *mocks.OfferingRepository) {
 				offeringRepo.On("FindByName", mock.Anything, "Test").Return(nil, nil)
 			},
-			assert: func(t *testing.T, _ service.CreateOfferingOutput, err error) {
+			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
 				require.Error(t, err)
 				assert.True(t, customerr.IsValidation(err))
 			},
@@ -94,7 +94,7 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 				offeringRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Offering")).
 					Return(errors.New("insert failed"))
 			},
-			assert: func(t *testing.T, _ service.CreateOfferingOutput, err error) {
+			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
 				require.Error(t, err)
 				assert.True(t, customerr.IsInvalidOperation(err))
 			},
@@ -109,8 +109,8 @@ func TestCatalogService_CreateOffering(t *testing.T) {
 				tt.setupMocks(offeringRepo)
 			}
 
-			svc := service.NewCatalogService(offeringRepo)
-			output, err := svc.CreateOffering(context.Background(), tt.input)
+			uc := usecase.NewCreateOfferingUsecase(offeringRepo)
+			output, err := uc.CreateOffering(context.Background(), tt.input)
 
 			if tt.assert != nil {
 				tt.assert(t, output, err)

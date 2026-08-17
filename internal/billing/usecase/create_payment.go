@@ -1,4 +1,4 @@
-package service
+package usecase
 
 import (
 	"context"
@@ -11,20 +11,35 @@ import (
 	"github.com/charmingruby/new/pkg/o11y"
 )
 
-type paymentService struct {
+type CreatePaymentUsecase interface {
+	CreatePayment(ctx context.Context, input CreatePaymentInput) (CreatePaymentOutput, error)
+}
+
+type CreatePaymentInput struct {
+	UserID        string
+	OfferingID    string
+	ExternalID    string
+	ChargedAmount int
+}
+
+type CreatePaymentOutput struct {
+	ID string
+}
+
+type createPaymentUsecase struct {
 	txManager    core.TransactionManager[repository.Transaction]
 	offeringRepo repository.OfferingRepository
 	paymentRepo  repository.PaymentRepository
 	notifier     client.NotificationClient
 }
 
-func NewPaymentService(
+func NewCreatePaymentUsecase(
 	txManager core.TransactionManager[repository.Transaction],
 	offeringRepo repository.OfferingRepository,
 	paymentRepo repository.PaymentRepository,
 	notifier client.NotificationClient,
-) *paymentService {
-	return &paymentService{
+) *createPaymentUsecase {
+	return &createPaymentUsecase{
 		txManager:    txManager,
 		offeringRepo: offeringRepo,
 		paymentRepo:  paymentRepo,
@@ -32,8 +47,11 @@ func NewPaymentService(
 	}
 }
 
-func (s *paymentService) CreatePayment(ctx context.Context, input CreatePaymentInput) (CreatePaymentOutput, error) {
-	offering, err := s.offeringRepo.FindByID(ctx, input.OfferingID)
+func (u *createPaymentUsecase) CreatePayment(
+	ctx context.Context,
+	input CreatePaymentInput,
+) (CreatePaymentOutput, error) {
+	offering, err := u.offeringRepo.FindByID(ctx, input.OfferingID)
 	if err != nil {
 		return CreatePaymentOutput{}, customerr.Integration(err)
 	}
@@ -45,7 +63,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, input CreatePaymentI
 	var paymentID string
 	created := false
 
-	err = s.txManager.Transact(func(tx repository.Transaction) error {
+	err = u.txManager.Transact(func(tx repository.Transaction) error {
 		existing, err := tx.PaymentRepo.FindByExternalID(ctx, input.ExternalID)
 		if err != nil {
 			return customerr.Integration(err)
@@ -79,7 +97,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, input CreatePaymentI
 	}
 
 	if created {
-		if err := s.notifier.Send(ctx, client.SendNotificationInput{
+		if err := u.notifier.Send(ctx, client.SendNotificationInput{
 			UserID:  input.UserID,
 			Message: "payment confirmed",
 		}); err != nil {
@@ -88,31 +106,4 @@ func (s *paymentService) CreatePayment(ctx context.Context, input CreatePaymentI
 	}
 
 	return CreatePaymentOutput{ID: paymentID}, nil
-}
-
-func (s *paymentService) GetPayment(ctx context.Context, input GetPaymentInput) (*model.Payment, error) {
-	payment, err := s.paymentRepo.FindByID(ctx, input.PaymentID)
-	if err != nil {
-		return nil, customerr.Integration(err)
-	}
-
-	if payment == nil {
-		return nil, customerr.NotFound("payment not found")
-	}
-
-	return payment, nil
-}
-
-func (s *paymentService) ListPayments(ctx context.Context, input ListPaymentsInput) (ListPaymentsOutput, error) {
-	params := core.DefaultPaginationParams(input.Page)
-
-	payments, total, err := s.paymentRepo.ListByUserID(ctx, input.UserID, params)
-	if err != nil {
-		return ListPaymentsOutput{}, customerr.Integration(err)
-	}
-
-	return ListPaymentsOutput{
-		Payments: payments,
-		Total:    total,
-	}, nil
 }
