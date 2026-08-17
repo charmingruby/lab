@@ -7,7 +7,7 @@ import (
 	"github.com/charmingruby/new/internal/shared/httpx"
 )
 
-type CreatePaymentRequest struct {
+type CreatePaymentV1Request struct {
 	UserID        string `json:"user_id"        validate:"required,min=1"`
 	OfferingID    string `json:"offering_id"    validate:"required,min=1"`
 	ExternalID    string `json:"external_id"    validate:"required,min=1"`
@@ -21,7 +21,7 @@ type CreatePaymentV1Response struct {
 func (e *Endpoint) CreatePaymentV1(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	request, err := httpx.ParseRequest[CreatePaymentRequest](w, r)
+	request, err := httpx.ParseRequest[CreatePaymentV1Request](w, r)
 	if err != nil {
 		return
 	}

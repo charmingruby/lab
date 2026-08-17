@@ -7,7 +7,7 @@ import (
 	"github.com/charmingruby/new/internal/shared/httpx"
 )
 
-type CreateOfferingRequest struct {
+type CreateOfferingV1Request struct {
 	Name        string `json:"name"        validate:"required,min=1"`
 	Description string `json:"description" validate:"required,min=1"`
 	ChargeType  string `json:"charge_type" validate:"required,min=1"`
@@ -23,7 +23,7 @@ type CreateOfferingV1Response struct {
 func (e *Endpoint) CreateOfferingV1(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	request, err := httpx.ParseRequest[CreateOfferingRequest](w, r)
+	request, err := httpx.ParseRequest[CreateOfferingV1Request](w, r)
 	if err != nil {
 		return
 	}

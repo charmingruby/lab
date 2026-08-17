@@ -30,6 +30,8 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners) lives in it
 
 **`repository/` shape** — template for any port with multiple backends: interface at the root (`repository/repository.go`), each implementation in its own subpackage (`repository/postgres/`). Same shape for any messaging port (`queue/kafka`, `queue/sqs`) and for `client/` (port in `client/notifier.go`, adapter in `client/console/`).
 
+**External dependencies (storage, email, cache, third-party APIs)** — same shape as `client/`, raw connection in `pkg/`, port scoped to who consumes it (domain-specific vs. shared). See [docs/external-integrations.md](docs/external-integrations.md).
+
 Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Cross-cutting concerns go in `internal/shared` (`core`, `customerr`, `httpx`). Reusable infra goes in `pkg`.
 
 ### Adding a feature — fixed layer order
@@ -41,13 +43,23 @@ Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains
 5. **`http/endpoint`** — parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Response` or `httpx.WriteError` (error type maps to HTTP status).
 6. **`http/route.go`** — register under `/api/v1/...`.
 
-### Versioning
+## Tests
 
-Breaking or deprecating an API version, or versioning a gRPC/queue boundary? Read [docs/versioning.md](docs/versioning.md).
+- External packages only (`endpoint_test`, `usecase_test`), table-driven, testify.
+- Mocks generated with mockery into `test/<domain>/mocks` and `test/shared/mocks`; regenerate with `make mock` and commit them.
 
-### Cross-module reads
+## Progressive Documentation Loading
 
-Reading another module's data? Read [docs/cross-module-reads.md](docs/cross-module-reads.md).
+CRITICAL: Only load the reference below that matches your current task. Do NOT read all docs up front — most work needs nothing beyond this file.
+
+| Task                                                                                                                    | Load                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Implement a domain feature (model → repository → usecase → endpoint)                                                    | [docs/coding-patterns.md](docs/coding-patterns.md) + mirror `internal/billing/` |
+| Add a layer, protocol, or module boundary                                                                               | "Structure" above + mirror `internal/billing/`                                  |
+| Add or consume an external integration (storage, email, cache, third-party API)                                         | [docs/external-integrations.md](docs/external-integrations.md)                  |
+| Expose an application boundary — new/handled protocol, or a versioned HTTP/gRPC/queue interface (incl. break/deprecate) | [docs/versioning.md](docs/versioning.md)                                        |
+| Read another module's data                                                                                              | [docs/cross-module-reads.md](docs/cross-module-reads.md)                        |
+| Tests                                                                                                                   | "Tests" above + existing `*_test.go` in the domain                              |
 
 ## Rules
 
@@ -59,7 +71,7 @@ Reading another module's data? Read [docs/cross-module-reads.md](docs/cross-modu
 
 **Never:**
 
-- Add a layer not listed in Structure (no service layer, no extra abstraction between usecase and repository).
+- Add a layer not listed in Structure (no extra abstraction between usecase and repository).
 - Skip the usecase (handler/endpoint calling repository or client directly).
 - Import another module's package (`usecase`, `repository`, `model`) — use its `client` port instead.
 - Use globals or `panic()`.
@@ -69,8 +81,3 @@ Reading another module's data? Read [docs/cross-module-reads.md](docs/cross-modu
 
 1. Copy the pattern from `internal/billing/`.
 2. If `internal/billing/` doesn't cover the case, pick the option that adds the least new structure.
-
-## Tests
-
-- External packages only (`endpoint_test`, `usecase_test`), table-driven, testify.
-- Mocks generated with mockery into `test/<domain>/mocks` and `test/shared/mocks`; regenerate with `make mock` and commit them.
