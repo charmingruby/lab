@@ -8,10 +8,6 @@ import (
 	"github.com/charmingruby/new/internal/shared/customerr"
 )
 
-type CreateOfferingUsecase interface {
-	CreateOffering(ctx context.Context, input CreateOfferingInput) (CreateOfferingOutput, error)
-}
-
 type CreateOfferingInput = model.OfferingInput
 
 type CreateOfferingOutput struct {

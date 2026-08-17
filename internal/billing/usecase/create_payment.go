@@ -11,10 +11,6 @@ import (
 	"github.com/charmingruby/new/pkg/o11y"
 )
 
-type CreatePaymentUsecase interface {
-	CreatePayment(ctx context.Context, input CreatePaymentInput) (CreatePaymentOutput, error)
-}
-
 type CreatePaymentInput struct {
 	UserID        string
 	OfferingID    string

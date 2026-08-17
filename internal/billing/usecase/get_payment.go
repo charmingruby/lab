@@ -8,10 +8,6 @@ import (
 	"github.com/charmingruby/new/internal/shared/customerr"
 )
 
-type GetPaymentUsecase interface {
-	GetPayment(ctx context.Context, input GetPaymentInput) (*model.Payment, error)
-}
-
 type GetPaymentInput struct {
 	PaymentID string
 }

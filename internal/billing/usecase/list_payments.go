@@ -9,10 +9,6 @@ import (
 	"github.com/charmingruby/new/internal/shared/customerr"
 )
 
-type ListPaymentsUsecase interface {
-	ListPayments(ctx context.Context, input ListPaymentsInput) (ListPaymentsOutput, error)
-}
-
 type ListPaymentsInput struct {
 	UserID string
 	Page   int
