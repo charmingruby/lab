@@ -8,6 +8,8 @@ Any dependency the app doesn't own — object storage, email delivery, cache, a 
 
 `repository/` never hosts this. `repository/` is reserved for the domain's own persistent golden source of truth — the store that owns and mutates the domain's state — deliberately kept local to the domain, one interface at the root, one subpackage per backend (`repository/postgres` today, another tomorrow if the backend changes). External integrations aren't a domain's source of truth; they're consumed, so they're always a `client` port, whether domain-specific or shared.
 
+**Messaging is not an external integration.** A queue — producer or consumer — is a *delivery mechanism*: a transport the domain speaks, like HTTP. It lives in the domain's `delivery/queue/`, counts toward the `delivery/` split, and never becomes a `client` port. This document covers only outbound side-effect integrations (storage, email, cache, third-party APIs). See "Structure" in AGENTS.md.
+
 ## Decision: domain-specific vs. shared
 
 **One question decides where the port and adapter live: does more than one domain need this integration?**
@@ -121,6 +123,7 @@ func (c *Client) PutObject(ctx context.Context, bucket, key string, data []byte)
 - ❌ Never call a `pkg/` client directly from a usecase — always through a `client` adapter.
 - ❌ Never duplicate the same integration's port across domains once a second domain needs it — move it to `internal/shared/client/` instead of copy-pasting.
 - ❌ Never model an external integration as a `repository` — it isn't the domain's source of truth.
+- ❌ Never model a queue as a `client` integration — messaging (producer or consumer) is a delivery mechanism and lives in `delivery/queue/`.
 
 BAD — usecase calling the SDK wrapper directly, skipping the port:
 

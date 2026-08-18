@@ -21,16 +21,18 @@ A domain is a **ports and adapters** module in `internal/<domain>`, one dependen
                               → model
 ```
 
-**Inbound protocol layout — pick one:**
+**Delivery mechanism layout — a mechanism is any transport the domain speaks:**
 
-- **One protocol** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/` and `route.go`. No `delivery/` wrapper.
-- **Two or more protocols**: nested — introduce `delivery/` as the parent. Move the existing `http/` to `delivery/http/`. Add the new protocol beside it: `delivery/grpc/`, `delivery/queue/`.
+- **One mechanism** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/` and `route.go`. No `delivery/` wrapper.
+- **Two or more mechanisms**: nested — introduce `delivery/` as the parent. Move the existing `http/` to `delivery/http/`. Add the new mechanism beside it: `delivery/grpc/`, `delivery/queue/`.
 
-Everything bound to a transport (DTOs, protos, endpoints, listeners) lives in its own protocol folder and is wired in `<domain>/<domain>.go`.
+Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
 
-**`repository/` shape** — template for any port with multiple backends: interface at the root (`repository/repository.go`), each implementation in its own subpackage (`repository/postgres/`). Same shape for any messaging port (`queue/kafka`, `queue/sqs`) and for `client/` (port in `client/notifier.go`, adapter in `client/console/`).
+**Messaging is always a delivery mechanism.** A queue is a transport in both directions — a consumer is inbound (listens, like HTTP receives requests), a producer is outbound (delivers events to another system). Both live in `delivery/queue/` and both count toward the `delivery/` split: adding any queue to a domain that has HTTP forces the nested layout. Messaging never becomes a `client` integration.
 
-**External dependencies (storage, email, cache, third-party APIs)** — same shape as `client/`, raw connection in `pkg/`, port scoped to who consumes it (domain-specific vs. shared). See [docs/external-integrations.md](docs/external-integrations.md).
+**`repository/` shape** — template for any port with multiple backends: interface at the root (`repository/repository.go`), each implementation in its own subpackage (`repository/postgres/`). Same shape for `client/` (port in `client/notifier.go`, adapter in `client/console/`) and for messaging adapters inside `delivery/queue/` (`queue/kafka`, `queue/sqs`).
+
+**External dependencies (storage, email, cache, third-party APIs)** — same shape as `client/`, raw connection in `pkg/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [docs/external-integrations.md](docs/external-integrations.md).
 
 Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Cross-cutting concerns go in `internal/shared` (`core`, `customerr`, `httpx`). Reusable infra goes in `pkg`.
 
