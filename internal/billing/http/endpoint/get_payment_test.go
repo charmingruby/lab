@@ -19,9 +19,9 @@ import (
 )
 
 func TestEndpoint_GetPaymentV1(t *testing.T) {
-	newRouter := func(h *endpoint.Endpoint) *chi.Mux {
+	newRouter := func(ep *endpoint.Endpoint) *chi.Mux {
 		r := chi.NewRouter()
-		r.Get("/v1/payments/{id}", h.GetPaymentV1)
+		r.Get("/v1/payments/{id}", ep.GetPaymentV1)
 		return r
 	}
 
@@ -58,13 +58,13 @@ func TestEndpoint_GetPaymentV1(t *testing.T) {
 				tt.setupMocks(mockGetPayment)
 			}
 
-			h := endpoint.New(
+			ep := endpoint.New(
 				new(mocks.CreateOfferingUsecase),
 				new(mocks.CreatePaymentUsecase),
 				mockGetPayment,
 				new(mocks.ListPaymentsUsecase),
 			)
-			router := newRouter(h)
+			router := newRouter(ep)
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tt.path, nil)

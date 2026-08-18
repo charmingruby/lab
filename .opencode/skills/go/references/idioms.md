@@ -506,19 +506,19 @@ type MyString string
 
 ## File Naming
 
-Use kebab-case for Go source files:
+Use lowercase snake_case for Go source files:
 
 ```
-user-service.go
-http-handler.go
-config-parser.go
+user_service.go
+http_handler.go
+config_parser.go
 ```
 
 Test files follow the same convention with suffixes:
 
 ```
-user-service_test.go          # black-box tests (package foo_test)
-user-service_internal_test.go # white-box tests (package foo)
+user_service_test.go          # black-box tests (package foo_test)
+user_service_internal_test.go # white-box tests (package foo)
 ```
 
 ## Avoid

@@ -78,7 +78,7 @@ func TestEndpoint_ListPaymentsV1(t *testing.T) {
 				tt.setupMocks(mockListPayments)
 			}
 
-			h := endpoint.New(
+			ep := endpoint.New(
 				new(mocks.CreateOfferingUsecase),
 				new(mocks.CreatePaymentUsecase),
 				new(mocks.GetPaymentUsecase),
@@ -88,7 +88,7 @@ func TestEndpoint_ListPaymentsV1(t *testing.T) {
 
 			req := testRequest(t, http.MethodGet, "/v1/payments?"+tt.query, "")
 
-			h.ListPaymentsV1(w, req)
+			ep.ListPaymentsV1(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedStatus == http.StatusOK {

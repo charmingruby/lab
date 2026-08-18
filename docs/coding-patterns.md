@@ -49,7 +49,10 @@ func NewOffering(input OfferingInput) (*Offering, error) {
 	return &Offering{
 		Model:       core.NewModel(),
 		Name:        input.Name,
+		Description: input.Description,
 		ChargeType:  chargeType,
+		Currency:    input.Currency,
+		Price:       input.Price,
 		IsActive:    input.IsActive,
 	}, nil
 }
@@ -89,6 +92,7 @@ Interface at the root: `internal/billing/repository/repository.go`.
 type PaymentRepository interface {
 	Create(ctx context.Context, payment *model.Payment) error
 	FindByID(ctx context.Context, id string) (*model.Payment, error)
+	FindByExternalID(ctx context.Context, externalID string) (*model.Payment, error)
 	ListByUserID(ctx context.Context, userID string, params core.PaginationParams) ([]model.Payment, int, error)
 	Update(ctx context.Context, payment *model.Payment) error
 }
@@ -150,7 +154,7 @@ One file per implemented use case; interfaces aggregated in `usecase/usecase.go`
 
 **Rules:**
 
-- ✅ Input/output structs live in the usecase file (`PaymentInput`, `PaymentOutput`).
+- ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output` (e.g. `CreatePaymentInput`, `GetPaymentInput`, `ListPaymentsOutput`).
 - ✅ Infra failures wrap as `customerr.Integration(err)`.
 - ✅ Domain outcomes map: missing → `customerr.NotFound`, duplicate → `customerr.Conflict`, invalid → `customerr.Validation`.
 - ✅ Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
@@ -288,7 +292,7 @@ db.ExecContext(ctx, "INSERT INTO payments ...")       // ❌ SQL in the handler
 
 ## 6. http/route.go
 
-Register under `/api/v1/...` (the router is already mounted at `/api/v1`).
+Register under `/api/v1/...` (the router is mounted at `/api`; group resource routes under `/v1/...` to land on `/api/v1/...`).
 
 **Rules:**
 

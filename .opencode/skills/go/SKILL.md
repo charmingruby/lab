@@ -9,19 +9,19 @@ Simplicity is the highest Go virtue. Resist abstraction until the cost of not ab
 
 ## References
 
-Extended examples, code patterns, and detailed rationale for the rules below live in `${CLAUDE_SKILL_DIR}/references/`.
+Extended examples, code patterns, and detailed rationale for the rules below live in `references/`.
 
-- **[`${CLAUDE_SKILL_DIR}/references/idioms.md`]** — Naming, declarations, interfaces, receivers, configuration,
+- **[`references/idioms.md`]** — Naming, declarations, interfaces, receivers, configuration,
   embedding: extended code examples for each idiom, Go/bad vs good comparisons, decision criteria tables
-- **[`${CLAUDE_SKILL_DIR}/references/gotchas.md`]** — Variable shadowing, defer traps, slice mutation, strings, copy
+- **[`references/gotchas.md`]** — Variable shadowing, defer traps, slice mutation, strings, copy
   safety: annotated code showing each pitfall with fix patterns, global state examples
-- **[`${CLAUDE_SKILL_DIR}/references/errors.md`]** — Error creation, wrapping, Is/As, structured errors (golib/e): error
+- **[`references/errors.md`]** — Error creation, wrapping, Is/As, structured errors (golib/e): error
   type decision tree, golib/e API (sentinels, fields, logging), wrapping context examples
-- **[`${CLAUDE_SKILL_DIR}/references/concurrency.md`]** — Goroutines, channels, context, sync, errgroup, data races:
+- **[`references/concurrency.md`]** — Goroutines, channels, context, sync, errgroup, data races:
   worker lifecycle patterns, pipeline/fan-out/fan-in code, data race scenarios with fixes
-- **[`${CLAUDE_SKILL_DIR}/references/testing.md`]** — Table tests, subtests, assertions, test doubles, benchmarks: full
+- **[`references/testing.md`]** — Table tests, subtests, assertions, test doubles, benchmarks: full
   table-test template, testify usage, parallel subtests, httptest/iotest utilities
-- **[`${CLAUDE_SKILL_DIR}/references/structure.md`]** — Project layout, packages, imports, file organization: package
+- **[`references/structure.md`]** — Project layout, packages, imports, file organization: package
   naming examples, import grouping, backward-incompatible change staged workflow
 
 ## Naming
@@ -189,7 +189,7 @@ Naming: exported `XxxError`, unexported `xxxError`. Implement `Error() string`. 
 ### Structured Errors (golib/e)
 
 When a project uses a structured error package like golib/e, prefer it consistently over `fmt.Errorf`. See
-`${CLAUDE_SKILL_DIR}/references/errors.md` for API details.
+`references/errors.md` for API details.
 
 ### Wrapping: %w vs %v
 
@@ -226,7 +226,7 @@ error if no prior error exists. When intentionally ignoring, use `_ =` to make i
 ### Internal Panic/Recover
 
 Acceptable only when panics never escape package boundaries and a top-level deferred `recover` translates them to
-errors. Rare — see `${CLAUDE_SKILL_DIR}/references/errors.md` for the full pattern.
+errors. Rare — see `references/errors.md` for the full pattern.
 
 ### Error Flow
 
@@ -542,7 +542,7 @@ callees.
 - Test file adjacent: `foo.go` -> `foo_test.go`
 - Keep related code together — don't scatter features across files
 - `doc.go` for package-level documentation if needed
-- Kebab-case for Go source files: `user-service.go`, `http-handler.go`
+- Lowercase snake_case for Go source files: `user_service.go`, `http_handler.go`
 
 ### Backward-Incompatible Changes
 

@@ -65,7 +65,7 @@ func TestEndpoint_CreatePaymentV1(t *testing.T) {
 				tt.setupMocks(mockCreatePayment)
 			}
 
-			h := endpoint.New(
+			ep := endpoint.New(
 				new(mocks.CreateOfferingUsecase),
 				mockCreatePayment,
 				new(mocks.GetPaymentUsecase),
@@ -74,7 +74,7 @@ func TestEndpoint_CreatePaymentV1(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := testRequest(t, http.MethodPost, "/v1/payments/", tt.body)
 
-			h.CreatePaymentV1(w, req)
+			ep.CreatePaymentV1(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedID != "" {
