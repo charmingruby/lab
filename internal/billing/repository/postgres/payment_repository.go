@@ -19,7 +19,6 @@ const (
 	findPaymentByExternalIDQuery = "find payment by external id"
 	listPaymentByUserIDQuery     = "list payment by user id"
 	countPaymentByUserIDQuery    = "count payment by user id"
-	updatePaymentQuery           = "update payment"
 )
 
 var paymentQueries = map[string]string{
@@ -48,12 +47,6 @@ var paymentQueries = map[string]string{
 		SELECT COUNT(*) FROM payments
 		WHERE
 			user_id=$1 AND
-			deleted_at IS NULL`,
-	updatePaymentQuery: `
-		UPDATE payments
-		SET status=$1, updated_at=$2, deleted_at=$3
-		WHERE
-			id=$4 AND
 			deleted_at IS NULL`,
 }
 
@@ -200,23 +193,4 @@ func (r *PaymentRepository) ListByUserID(
 	}
 
 	return payments, total, nil
-}
-
-func (r *PaymentRepository) Update(ctx context.Context, payment *model.Payment) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
-	defer cancel()
-
-	stmt, err := r.statement(updatePaymentQuery)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.ExecContext(ctx,
-		payment.Status,
-		payment.UpdatedAt,
-		payment.DeletedAt,
-		payment.ID,
-	)
-
-	return err
 }

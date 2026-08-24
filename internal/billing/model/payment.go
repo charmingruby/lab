@@ -1,6 +1,9 @@
 package model
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/charmingruby/new/internal/shared/core"
 )
 
@@ -11,6 +14,8 @@ const (
 	PaidPaymentStatus    PaymentStatus = "paid"
 	FailedPaymentStatus  PaymentStatus = "failed"
 )
+
+var ErrInvalidPaymentTransition = errors.New("invalid payment status transition")
 
 type Payment struct {
 	core.Model    `              db:",inline"`
@@ -39,14 +44,22 @@ func NewPayment(input PaymentInput) *Payment {
 	}
 }
 
-func (p *Payment) MarkAsPaid() {
-	p.Touch(func(m *core.Model) {
-		p.Status = PaidPaymentStatus
-	})
+func (p *Payment) MarkAsPaid() error {
+	return p.transitionTo(PaidPaymentStatus)
 }
 
-func (p *Payment) MarkAsFailed() {
+func (p *Payment) MarkAsFailed() error {
+	return p.transitionTo(FailedPaymentStatus)
+}
+
+func (p *Payment) transitionTo(status PaymentStatus) error {
+	if p.Status != PendingPaymentStatus {
+		return fmt.Errorf("%w: %s -> %s", ErrInvalidPaymentTransition, p.Status, status)
+	}
+
 	p.Touch(func(m *core.Model) {
-		p.Status = FailedPaymentStatus
+		p.Status = status
 	})
+
+	return nil
 }

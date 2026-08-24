@@ -18,16 +18,17 @@ import (
 
 func TestEndpoint_ListPaymentsV1(t *testing.T) {
 	type response struct {
-		Payments []model.Payment `json:"payments"`
-		Total    int             `json:"total"`
+		Payments []map[string]any `json:"payments"`
+		Total    int              `json:"total"`
 	}
 
 	tests := []struct {
 		setupMocks     func(*mocks.ListPaymentsUsecase)
 		name           string
 		query          string
-		expectedResp   response
+		expectedCount  int
 		expectedStatus int
+		expectedTotal  int
 	}{
 		{
 			name:  "success with default page",
@@ -44,12 +45,8 @@ func TestEndpoint_ListPaymentsV1(t *testing.T) {
 				}, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedResp: response{
-				Payments: []model.Payment{
-					{UserID: "user-123", Status: model.PaidPaymentStatus},
-				},
-				Total: 1,
-			},
+			expectedCount:  1,
+			expectedTotal:  1,
 		},
 		{
 			name:  "success with custom page",
@@ -64,10 +61,8 @@ func TestEndpoint_ListPaymentsV1(t *testing.T) {
 				}, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedResp: response{
-				Payments: []model.Payment{},
-				Total:    0,
-			},
+			expectedCount:  0,
+			expectedTotal:  0,
 		},
 	}
 
@@ -94,8 +89,14 @@ func TestEndpoint_ListPaymentsV1(t *testing.T) {
 			if tt.expectedStatus == http.StatusOK {
 				var resp response
 				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-				assert.Equal(t, tt.expectedResp.Total, resp.Total)
-				assert.Len(t, resp.Payments, len(tt.expectedResp.Payments))
+				assert.Equal(t, tt.expectedTotal, resp.Total)
+				assert.Len(t, resp.Payments, tt.expectedCount)
+
+				if len(resp.Payments) > 0 {
+					payment := resp.Payments[0]
+					assert.NotContains(t, payment, "deleted_at")
+					assert.NotContains(t, payment, "updated_at")
+				}
 			}
 			mockListPayments.AssertExpectations(t)
 		})

@@ -3,14 +3,13 @@ package endpoint
 import (
 	"net/http"
 
-	"github.com/charmingruby/new/internal/billing/model"
 	"github.com/charmingruby/new/internal/billing/usecase"
 	"github.com/charmingruby/new/internal/shared/httpx"
 )
 
 type ListPaymentsV1Response struct {
-	Payments []model.Payment `json:"payments"`
-	Total    int             `json:"total"`
+	Payments []PaymentV1Response `json:"payments"`
+	Total    int                 `json:"total"`
 }
 
 func (e *Endpoint) ListPaymentsV1(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +32,13 @@ func (e *Endpoint) ListPaymentsV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payments := make([]PaymentV1Response, 0, len(output.Payments))
+	for _, p := range output.Payments {
+		payments = append(payments, newPaymentV1Response(&p))
+	}
+
 	httpx.WriteOKResponse(w, ListPaymentsV1Response{
-		Payments: output.Payments,
+		Payments: payments,
 		Total:    output.Total,
 	})
 }

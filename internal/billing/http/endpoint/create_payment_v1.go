@@ -11,7 +11,7 @@ type CreatePaymentV1Request struct {
 	UserID        string `json:"user_id"        validate:"required,min=1"`
 	OfferingID    string `json:"offering_id"    validate:"required,min=1"`
 	ExternalID    string `json:"external_id"    validate:"required,min=1"`
-	ChargedAmount int    `json:"charged_amount" validate:"required"`
+	ChargedAmount int    `json:"charged_amount" validate:"required,gt=0"`
 }
 
 type CreatePaymentV1Response struct {

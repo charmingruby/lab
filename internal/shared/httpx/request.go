@@ -59,13 +59,16 @@ func GetQueryParam(r *http.Request, key string) (string, error) {
 }
 
 func GetPageQueryParam(r *http.Request) int {
-	page := 1
+	const defaultPage = 1
 
-	pageStr, err := GetQueryParam(r, "page")
-	if pageStr != "" || err != nil {
-		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-			page = p
-		}
+	pageStr := r.URL.Query().Get("page")
+	if pageStr == "" {
+		return defaultPage
+	}
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < defaultPage {
+		return defaultPage
 	}
 
 	return page

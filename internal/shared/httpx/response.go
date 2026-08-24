@@ -11,7 +11,6 @@ import (
 
 type ErrorResponse struct {
 	Message string `json:"message"`
-	Code    string `json:"code,omitempty"`
 }
 
 func WriteOKResponse(w http.ResponseWriter, v any) {
@@ -55,7 +54,6 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 
 		log.Warn("application error",
 			"type", customErr.Type,
-			"code", customErr.Code,
 			"message", customErr.Message,
 			"original_error", originalErrMsg,
 		)
@@ -76,7 +74,6 @@ func writeCustomError(w http.ResponseWriter, err *customerr.Error) {
 
 	WriteResponse(w, status, ErrorResponse{
 		Message: err.Message,
-		Code:    err.Code,
 	})
 }
 

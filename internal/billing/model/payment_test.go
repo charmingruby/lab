@@ -59,7 +59,7 @@ func TestPayment_MarkAsPaid(t *testing.T) {
 	})
 	require.Equal(t, model.PendingPaymentStatus, payment.Status)
 
-	payment.MarkAsPaid()
+	require.NoError(t, payment.MarkAsPaid())
 
 	assert.Equal(t, model.PaidPaymentStatus, payment.Status)
 	assert.NotNil(t, payment.UpdatedAt)
@@ -73,9 +73,67 @@ func TestPayment_MarkAsFailed(t *testing.T) {
 	})
 	require.Equal(t, model.PendingPaymentStatus, payment.Status)
 
-	payment.MarkAsFailed()
+	require.NoError(t, payment.MarkAsFailed())
 
 	assert.Equal(t, model.FailedPaymentStatus, payment.Status)
 	assert.NotNil(t, payment.UpdatedAt)
 	assert.Nil(t, payment.DeletedAt)
+}
+
+func TestPayment_InvalidTransitions(t *testing.T) {
+	tests := []struct {
+		arrange func(t *testing.T) *model.Payment
+		act     func(*model.Payment) error
+		name    string
+	}{
+		{
+			name: "paid -> paid",
+			arrange: func(t *testing.T) *model.Payment {
+				payment := model.NewPayment(model.PaymentInput{
+					UserID: "user-123", OfferingID: "offering-123",
+					ExternalID: "pi_123", ChargedAmount: 1000,
+				})
+				require.NoError(t, payment.MarkAsPaid())
+
+				return payment
+			},
+			act: (*model.Payment).MarkAsPaid,
+		},
+		{
+			name: "paid -> failed",
+			arrange: func(t *testing.T) *model.Payment {
+				payment := model.NewPayment(model.PaymentInput{
+					UserID: "user-123", OfferingID: "offering-123",
+					ExternalID: "pi_123", ChargedAmount: 1000,
+				})
+				require.NoError(t, payment.MarkAsPaid())
+
+				return payment
+			},
+			act: (*model.Payment).MarkAsFailed,
+		},
+		{
+			name: "failed -> paid",
+			arrange: func(t *testing.T) *model.Payment {
+				payment := model.NewPayment(model.PaymentInput{
+					UserID: "user-123", OfferingID: "offering-123",
+					ExternalID: "pi_123", ChargedAmount: 1000,
+				})
+				require.NoError(t, payment.MarkAsFailed())
+
+				return payment
+			},
+			act: (*model.Payment).MarkAsPaid,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payment := tt.arrange(t)
+
+			err := tt.act(payment)
+
+			require.ErrorIs(t, err, model.ErrInvalidPaymentTransition)
+		})
+	}
 }

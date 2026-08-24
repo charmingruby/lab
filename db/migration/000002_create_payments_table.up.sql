@@ -9,3 +9,7 @@ CREATE TABLE payments (
     updated_at TIMESTAMP DEFAULT NULL,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+CREATE UNIQUE INDEX payments_external_id_active_unique_idx
+    ON payments (external_id)
+    WHERE deleted_at IS NULL;

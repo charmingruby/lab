@@ -20,6 +20,14 @@ jobs:
         run: |
           go mod tidy
 
+      - name: Install mockery
+        run: |
+          go install github.com/vektra/mockery/v2@v2.53.4
+
+      - name: Generate mocks
+        run: |
+          make mock
+
       - name: Test
         run: |
           go test ./... -race

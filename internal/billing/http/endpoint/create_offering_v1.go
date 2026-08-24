@@ -12,7 +12,7 @@ type CreateOfferingV1Request struct {
 	Description string `json:"description" validate:"required,min=1"`
 	ChargeType  string `json:"charge_type" validate:"required,min=1"`
 	Currency    string `json:"currency"    validate:"required,min=1"`
-	Price       int    `json:"price"       validate:"required"`
+	Price       int    `json:"price"       validate:"required,gt=0"`
 	IsActive    bool   `json:"is_active"`
 }
 

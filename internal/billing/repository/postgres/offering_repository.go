@@ -16,8 +16,6 @@ const (
 	createOfferingQuery     = "create offering"
 	findOfferingByIDQuery   = "find offering by id"
 	findOfferingByNameQuery = "find offering by name"
-	listOfferingsQuery      = "list offerings"
-	updateOfferingQuery     = "update offering"
 )
 
 var offeringQueries = map[string]string{
@@ -34,17 +32,6 @@ var offeringQueries = map[string]string{
 		SELECT * FROM offerings
 		WHERE
 			name=$1 AND
-			deleted_at IS NULL`,
-	listOfferingsQuery: `
-		SELECT * FROM offerings
-		WHERE
-			deleted_at IS NULL
-		ORDER BY created_at DESC`,
-	updateOfferingQuery: `
-		UPDATE offerings
-		SET name=$1, description=$2, charge_type=$3, price=$4, currency=$5, is_active=$6, updated_at=$7, deleted_at=$8
-		WHERE
-			id=$9 AND
 			deleted_at IS NULL`,
 }
 
@@ -147,59 +134,4 @@ func (r *OfferingRepository) FindByName(ctx context.Context, name string) (*mode
 	}
 
 	return &offering, nil
-}
-
-func (r *OfferingRepository) ListAll(ctx context.Context) ([]model.Offering, error) {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
-	defer cancel()
-
-	stmt, err := r.statement(listOfferingsQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := stmt.QueryxContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var offerings []model.Offering
-	for rows.Next() {
-		var o model.Offering
-		if err := rows.StructScan(&o); err != nil {
-			return nil, err
-		}
-
-		offerings = append(offerings, o)
-	}
-
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return offerings, nil
-}
-
-func (r *OfferingRepository) Update(ctx context.Context, offering *model.Offering) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
-	defer cancel()
-
-	stmt, err := r.statement(updateOfferingQuery)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.ExecContext(ctx,
-		offering.Name,
-		offering.Description,
-		offering.ChargeType,
-		offering.Price,
-		offering.Currency,
-		offering.IsActive,
-		offering.UpdatedAt,
-		offering.DeletedAt,
-		offering.ID,
-	)
-
-	return err
 }

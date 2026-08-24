@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -97,6 +98,22 @@ func TestCreateOfferingUsecase(t *testing.T) {
 			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
 				require.Error(t, err)
 				assert.True(t, customerr.IsInvalidOperation(err))
+			},
+		},
+		{
+			name: "conflict when create races with duplicate name (unique violation)",
+			input: model.OfferingInput{
+				Name: "Raced Plan", Description: "Raced",
+				ChargeType: "one_time", Currency: "USD", Price: 100,
+			},
+			setupMocks: func(offeringRepo *mocks.OfferingRepository) {
+				offeringRepo.On("FindByName", mock.Anything, "Raced Plan").Return(nil, nil)
+				offeringRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Offering")).
+					Return(&pq.Error{Code: "23505"})
+			},
+			assert: func(t *testing.T, _ usecase.CreateOfferingOutput, err error) {
+				require.Error(t, err)
+				assert.True(t, customerr.IsConflict(err))
 			},
 		},
 	}

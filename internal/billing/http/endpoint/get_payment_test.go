@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -72,12 +73,25 @@ func TestEndpoint_GetPaymentV1(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
+
 			if tt.expectedStatus == http.StatusOK {
-				var resp model.Payment
+				var resp map[string]any
 				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-				assert.Equal(t, model.PaidPaymentStatus, resp.Status)
+
+				assert.Equal(t, model.PaidPaymentStatus, resp["status"])
 			}
+
 			mockGetPayment.AssertExpectations(t)
 		})
 	}
+}
+
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	return keys
 }

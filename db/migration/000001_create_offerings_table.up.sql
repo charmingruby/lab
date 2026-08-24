@@ -10,3 +10,7 @@ CREATE TABLE offerings (
     updated_at TIMESTAMP DEFAULT NULL,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+CREATE UNIQUE INDEX offerings_name_active_unique_idx
+    ON offerings (name)
+    WHERE deleted_at IS NULL;

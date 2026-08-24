@@ -77,7 +77,9 @@ func (u *createPaymentUsecase) CreatePayment(
 			ChargedAmount: input.ChargedAmount,
 		})
 
-		payment.MarkAsPaid()
+		if err := payment.MarkAsPaid(); err != nil {
+			return customerr.Internal("payment state transition failed", err)
+		}
 
 		if err := tx.PaymentRepo.Create(ctx, payment); err != nil {
 			return customerr.Integration(err)

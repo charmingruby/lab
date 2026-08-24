@@ -20,7 +20,6 @@ type Error struct {
 	Err     error     `json:"-"`
 	Type    ErrorType `json:"type"`
 	Message string    `json:"message"`
-	Code    string    `json:"code"`
 }
 
 func New(t ErrorType, message string, err error) *Error {
@@ -48,7 +47,7 @@ func IsNotFound(err error) bool {
 }
 
 func Integration(err error) *Error {
-	return New(TypeIntegration, err.Error(), nil)
+	return New(TypeIntegration, err.Error(), err)
 }
 
 func IsInvalidOperation(err error) bool {
@@ -89,11 +88,6 @@ func IsUnauthorized(err error) bool {
 
 func (e *Error) WithDetails(details any) *Error {
 	e.Details = details
-	return e
-}
-
-func (e *Error) WithCode(code string) *Error {
-	e.Code = code
 	return e
 }
 

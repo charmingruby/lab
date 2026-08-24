@@ -70,8 +70,10 @@ BAD — endpoint changing state directly:
 // ❌ In an endpoint: reaching into the fields
 payment.Status = "paid"   // ❌ string literal + no UpdateAt touch
 
-// ✅ In the usecase: explicit method
-payment.MarkAsPaid()      // sets status + touches UpdatedAt
+// ✅ In the usecase: explicit, guarded transition
+if err := payment.MarkAsPaid(); err != nil {
+	return customerr.Internal("payment state transition failed", err)
+}                          // pending -> paid only; illegal transitions return ErrInvalidPaymentTransition
 ```
 
 ---
@@ -94,9 +96,10 @@ type PaymentRepository interface {
 	FindByID(ctx context.Context, id string) (*model.Payment, error)
 	FindByExternalID(ctx context.Context, externalID string) (*model.Payment, error)
 	ListByUserID(ctx context.Context, userID string, params core.PaginationParams) ([]model.Payment, int, error)
-	Update(ctx context.Context, payment *model.Payment) error
 }
 ```
+
+Only add a method when a usecase needs it — no premature surface.
 
 ---
 
@@ -194,13 +197,17 @@ err = u.txManager.Transact(func(tx repository.Transaction) error {
 	}
 
 	payment := model.NewPayment(model.PaymentInput{ /* ... */ })
-	payment.MarkAsPaid()
+	if err := payment.MarkAsPaid(); err != nil {
+		return customerr.Internal("payment state transition failed", err)
+	}
 
 	if err := tx.PaymentRepo.Create(ctx, payment); err != nil {
 		return customerr.Integration(err)
 	}
 
 	paymentID = payment.ID
+	created = true
+
 	return nil
 })
 ```
