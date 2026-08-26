@@ -15,6 +15,21 @@ packages:
       all: true
       dir: test/billing/mocks
       filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/new/internal/ticket/usecase:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/new/internal/ticket/repository:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/new/internal/ticket/client:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
   github.com/charmingruby/new/internal/shared:
     config:
       all: true
