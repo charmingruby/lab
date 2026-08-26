@@ -8,9 +8,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/internal/shared/core"
-	"github.com/charmingruby/new/internal/ticket/model"
-	"github.com/charmingruby/new/pkg/postgrex"
+	"github.com/charmingruby/lab/internal/shared/core"
+	"github.com/charmingruby/lab/internal/ticket/model"
+	"github.com/charmingruby/lab/pkg/postgrex"
 )
 
 const (
@@ -161,7 +161,7 @@ func (r *TicketRepository) ListByStatus(
 		return nil, 0, err
 	}
 
-	rows, err := stmt.QueryxContext(ctx, status, params.PageSize, (params.Page-1)*params.PageSize)
+	rows, err := stmt.QueryxContext(ctx, status, params.Limit, params.Offset())
 	if err != nil {
 		return nil, 0, err
 	}

@@ -3,8 +3,8 @@ package http
 import (
 	"github.com/go-chi/chi/v5"
 
-	"github.com/charmingruby/new/internal/ticket/http/endpoint"
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 func SetupEndpoints(

@@ -7,7 +7,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 	mock "github.com/stretchr/testify/mock"
 )
 

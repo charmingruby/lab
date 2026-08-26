@@ -3,13 +3,16 @@ package endpoint
 import (
 	"net/http"
 
-	"github.com/charmingruby/new/internal/shared/httpx"
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 type ListTicketsV1Response struct {
-	Tickets []TicketV1Response `json:"tickets"`
-	Total   int                `json:"total"`
+	Tickets    []TicketV1Response `json:"tickets"`
+	Page       int                `json:"page"`
+	Limit      int                `json:"limit"`
+	Total      int                `json:"total"`
+	TotalPages int                `json:"total_pages"`
 }
 
 func (e *Endpoint) ListTicketsV1(w http.ResponseWriter, r *http.Request) {
@@ -21,11 +24,11 @@ func (e *Endpoint) ListTicketsV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := httpx.GetPageQueryParam(r)
+	params := httpx.GetPaginationParams(r)
 
 	output, err := e.listTickets.ListTickets(ctx, usecase.ListTicketsInput{
 		Status: status,
-		Page:   page,
+		Params: params,
 	})
 	if err != nil {
 		httpx.WriteError(w, r, err)
@@ -38,7 +41,10 @@ func (e *Endpoint) ListTicketsV1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteOKResponse(w, ListTicketsV1Response{
-		Tickets: tickets,
-		Total:   output.Total,
+		Tickets:    tickets,
+		Page:       output.Page,
+		Limit:      output.Limit,
+		Total:      output.Total,
+		TotalPages: output.TotalPages,
 	})
 }

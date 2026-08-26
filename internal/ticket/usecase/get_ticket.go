@@ -3,9 +3,9 @@ package usecase
 import (
 	"context"
 
-	"github.com/charmingruby/new/internal/shared/customerr"
-	"github.com/charmingruby/new/internal/ticket/model"
-	"github.com/charmingruby/new/internal/ticket/repository"
+	"github.com/charmingruby/lab/internal/shared/customerr"
+	"github.com/charmingruby/lab/internal/ticket/model"
+	"github.com/charmingruby/lab/internal/ticket/repository"
 )
 
 type GetTicketInput struct {

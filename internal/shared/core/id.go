@@ -1,7 +1,7 @@
 package core
 
-import "github.com/oklog/ulid/v2"
+import "uuid"
 
 func NewID() string {
-	return ulid.Make().String()
+	return uuid.NewV7().String()
 }

@@ -3,7 +3,7 @@ package public
 import (
 	"context"
 
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 type TicketReader struct {

@@ -3,9 +3,9 @@ package ticket
 import (
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/internal/ticket/public"
-	"github.com/charmingruby/new/internal/ticket/repository/postgres"
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/ticket/public"
+	"github.com/charmingruby/lab/internal/ticket/repository/postgres"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {

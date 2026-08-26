@@ -1,6 +1,6 @@
 package endpoint
 
-import "github.com/charmingruby/new/internal/ticket/usecase"
+import "github.com/charmingruby/lab/internal/ticket/usecase"
 
 type Endpoint struct {
 	createTicket usecase.CreateTicketUsecase

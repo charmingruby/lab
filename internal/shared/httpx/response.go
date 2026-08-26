@@ -1,12 +1,12 @@
 package httpx
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"net/http"
 
-	"github.com/charmingruby/new/internal/shared/customerr"
-	"github.com/charmingruby/new/pkg/o11y"
+	"github.com/charmingruby/lab/internal/shared/customerr"
+	"github.com/charmingruby/lab/pkg/o11y"
 )
 
 type ErrorResponse struct {

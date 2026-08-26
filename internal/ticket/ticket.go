@@ -4,10 +4,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/internal/ticket/client/console"
-	"github.com/charmingruby/new/internal/ticket/http"
-	"github.com/charmingruby/new/internal/ticket/repository/postgres"
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/ticket/client/console"
+	"github.com/charmingruby/lab/internal/ticket/http"
+	"github.com/charmingruby/lab/internal/ticket/repository/postgres"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 func New(

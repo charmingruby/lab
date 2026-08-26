@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmingruby/new/internal/shared/httpx"
-	"github.com/charmingruby/new/internal/ticket/model"
-	"github.com/charmingruby/new/internal/ticket/usecase"
+	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/ticket/model"
+	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
 type TicketV1Response struct {

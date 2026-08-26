@@ -1,36 +1,21 @@
 pkgname: mocks
 packages:
-  github.com/charmingruby/new/internal/billing/usecase:
-    config:
-      all: true
-      dir: test/billing/mocks
-      filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/billing/repository:
-    config:
-      all: true
-      dir: test/billing/mocks
-      filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/billing/client:
-    config:
-      all: true
-      dir: test/billing/mocks
-      filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/ticket/usecase:
+  github.com/charmingruby/lab/internal/ticket/usecase:
     config:
       all: true
       dir: test/ticket/mocks
       filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/ticket/repository:
+  github.com/charmingruby/lab/internal/ticket/repository:
     config:
       all: true
       dir: test/ticket/mocks
       filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/ticket/client:
+  github.com/charmingruby/lab/internal/ticket/client:
     config:
       all: true
       dir: test/ticket/mocks
       filename: "{{.InterfaceName}}_mock.go"
-  github.com/charmingruby/new/internal/shared:
+  github.com/charmingruby/lab/internal/shared:
     config:
       all: true
       dir: test/shared/mocks

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/charmingruby/new/internal/shared/core"
+	"github.com/charmingruby/lab/internal/shared/core"
 )
 
 type TicketStatus string

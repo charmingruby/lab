@@ -3,8 +3,8 @@ package postgres
 import (
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/internal/ticket/repository"
-	"github.com/charmingruby/new/pkg/postgrex"
+	"github.com/charmingruby/lab/internal/ticket/repository"
+	"github.com/charmingruby/lab/pkg/postgrex"
 )
 
 type TransactionManager struct {

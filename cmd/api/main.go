@@ -11,12 +11,12 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/config"
-	"github.com/charmingruby/new/internal/shared/httpx"
-	"github.com/charmingruby/new/internal/ticket"
-	"github.com/charmingruby/new/pkg/o11y"
-	"github.com/charmingruby/new/pkg/postgrex"
-	"github.com/charmingruby/new/pkg/validator"
+	"github.com/charmingruby/lab/config"
+	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/ticket"
+	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/pkg/postgrex"
+	"github.com/charmingruby/lab/pkg/validator"
 )
 
 const shutdownTimeout = 30 * time.Second

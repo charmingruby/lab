@@ -3,20 +3,23 @@ package usecase
 import (
 	"context"
 
-	"github.com/charmingruby/new/internal/shared/core"
-	"github.com/charmingruby/new/internal/shared/customerr"
-	"github.com/charmingruby/new/internal/ticket/model"
-	"github.com/charmingruby/new/internal/ticket/repository"
+	"github.com/charmingruby/lab/internal/shared/core"
+	"github.com/charmingruby/lab/internal/shared/customerr"
+	"github.com/charmingruby/lab/internal/ticket/model"
+	"github.com/charmingruby/lab/internal/ticket/repository"
 )
 
 type ListTicketsInput struct {
 	Status string
-	Page   int
+	Params core.PaginationParams
 }
 
 type ListTicketsOutput struct {
-	Tickets []model.Ticket
-	Total   int
+	Tickets    []model.Ticket
+	Page       int
+	Limit      int
+	Total      int
+	TotalPages int
 }
 
 type listTicketsUsecase struct {
@@ -30,7 +33,7 @@ func NewListTicketsUsecase(ticketRepo repository.TicketRepository) *listTicketsU
 }
 
 func (u *listTicketsUsecase) ListTickets(ctx context.Context, input ListTicketsInput) (ListTicketsOutput, error) {
-	params := core.DefaultPaginationParams(input.Page)
+	params := input.Params.Validate()
 
 	tickets, total, err := u.ticketRepo.ListByStatus(ctx, input.Status, params)
 	if err != nil {
@@ -38,7 +41,10 @@ func (u *listTicketsUsecase) ListTickets(ctx context.Context, input ListTicketsI
 	}
 
 	return ListTicketsOutput{
-		Tickets: tickets,
-		Total:   total,
+		Tickets:    tickets,
+		Page:       params.Page,
+		Limit:      params.Limit,
+		Total:      total,
+		TotalPages: params.TotalPages(total),
 	}, nil
 }
