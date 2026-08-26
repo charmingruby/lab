@@ -43,7 +43,7 @@ Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains
 3. **`repository/postgres`** — prepared statements via `postgrex.Querier`. Not-found returns `(nil, nil)`, never `sql.ErrNoRows`. Callers check for `nil`.
 4. **`usecase`** — one file per implemented use case; all use case interfaces (the mocks mockery generates) are aggregated in a single `usecase.go`. Infra failures wrap as `customerr.Integration(err)`. Domain outcomes map to `NotFound`/`Conflict`/`Validation`. Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
 5. **`http/endpoint`** — parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Response` or `httpx.WriteError` (error type maps to HTTP status).
-6. **`http/route.go`** — register under `/api/v1/...`.
+6. **`http/route.go`** — register under `/v1/...` (lands on `/api/v1/...`).
 
 ## Tests
 
