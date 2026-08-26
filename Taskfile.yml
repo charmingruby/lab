@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+  MIGRATIONS_PATH: "db/migration"
+  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/new?sslmode=disable"
+
+tasks:
+  default:
+    desc: Run application locally with hot-reload
+    cmds:
+      - go mod tidy
+      - air
+    silent: true
+  mig-up:
+    desc: Runs the migrations up
+    cmd: migrate -path {{.MIGRATIONS_PATH}} -database {{.DATABASE_URL}} up
+  mig-down:
+    desc: Runs the migrations down
+    cmd: migrate -path {{.MIGRATIONS_PATH}} -database {{.DATABASE_URL}} down
+  new-mig:
+    desc: Creates a new migration
+    cmd: migrate create -ext sql -dir {{.MIGRATIONS_PATH}} -seq {{.NAME}}
+  lint:
+    desc: Runs linter
+    cmds:
+      - go fmt ./...
+      - golangci-lint run ./...
+  lint-fix:
+    desc: Runs linter with auto-fix
+    cmds:
+      - go fmt ./...
+      - golangci-lint run --fix ./...
+  mock:
+    desc: Generates mocks
+    cmds:
+      - mockery --output test/billing/mocks --dir internal/billing --all
+      - mockery --output test/shared/mocks --dir internal/shared --all
+  test:
+    desc: Runs tests
+    deps: [mock]
+    cmd: go test ./... -race
+  build:
+    desc: Builds API binary
+    cmd: go build -ldflags="-s -w" -trimpath -o bin/api ./cmd/api
