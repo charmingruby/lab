@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -84,14 +83,4 @@ func TestEndpoint_GetPaymentV1(t *testing.T) {
 			mockGetPayment.AssertExpectations(t)
 		})
 	}
-}
-
-func sortedKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	return keys
 }

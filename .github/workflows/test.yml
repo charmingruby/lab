@@ -2,6 +2,8 @@ name: Test
 
 on:
   push:
+    branches: [main]
+  pull_request:
 
 jobs:
   test:
@@ -22,7 +24,7 @@ jobs:
           version: 3.x
 
       - name: Install mockery
-        run: go install github.com/vektra/mockery/v2@v2.53.4
+        run: go install github.com/vektra/mockery/v3@latest
 
       - name: Test
         run: task test

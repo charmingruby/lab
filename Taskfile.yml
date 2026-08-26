@@ -34,9 +34,7 @@ tasks:
       - golangci-lint run --fix ./...
   mock:
     desc: Generates mocks
-    cmds:
-      - mockery --output test/billing/mocks --dir internal/billing --all
-      - mockery --output test/shared/mocks --dir internal/shared --all
+    cmd: mockery
   test:
     desc: Runs tests
     deps: [mock]
