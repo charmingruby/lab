@@ -11,12 +11,12 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/new/config"
-	"github.com/charmingruby/new/internal/billing"
-	"github.com/charmingruby/new/internal/shared/httpx"
-	"github.com/charmingruby/new/pkg/o11y"
-	"github.com/charmingruby/new/pkg/postgrex"
-	"github.com/charmingruby/new/pkg/validator"
+	"github.com/charmingruby/lab/config"
+	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/ticket"
+	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/pkg/postgrex"
+	"github.com/charmingruby/lab/pkg/validator"
 )
 
 const shutdownTimeout = 30 * time.Second
@@ -55,8 +55,8 @@ func run() error {
 	val := validator.New()
 	srv, router := httpx.NewServer(cfg.Port, val)
 
-	if err := billing.New(router, db); err != nil {
-		log.Error("billing: module error", "error", err)
+	if err := ticket.New(router, db); err != nil {
+		log.Error("ticket: module error", "error", err)
 		return err
 	}
 

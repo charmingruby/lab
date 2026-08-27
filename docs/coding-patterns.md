@@ -1,105 +1,98 @@
 # Coding Patterns
 
-Implementation reference for a domain feature. Real code from `internal/billing/`. Mirror it — do not invent new shapes.
+Implementation reference for a domain feature. Real code from `internal/ticket/`. Mirror it — do not invent new shapes.
 
-> **Module structure**: follow "Structure" in `AGENTS.md`. For domain-modeling, tests, or versioning, see the "Progressive Documentation Loading" table.
-
-## The Dependency Spine
-
-A domain is a ports-and-adapters module in `internal/<domain>`:
-
-```
-<protocol> → usecase → repository (port) → repository/postgres
-                              → client (port)   → client/console
-                              → model
-```
-
-**Rules:**
-
-- ✅ One layer per responsibility: `model` (state), `repository` (port), `repository/postgres` (SQL), `usecase` (business), `http` (transport).
-- ✅ Wire everything declaratively in `<domain>/<domain>.go`.
-- ❌ Never add a service layer or any abstraction between usecase and repository.
-- ❌ Never let an endpoint call a repository or client directly — go through the usecase.
-- ❌ Never import another module's `usecase`/`repository`/`model` — use its `client` port.
-
----
+> **Module structure**: see "Structure" in `AGENTS.md`.
 
 ## 1. Model
 
-Constructor (`New<Model>(input)`), invariants, and state changes as explicit methods using `core.Model.Touch`.
+Constructor, invariants, state changes as explicit methods using `core.Model.Touch`.
 
 **Rules:**
 
 - ✅ Constructor returns `(*Model, error)` when there are invariants to hold; plain `*Model` otherwise.
 - ✅ Invalid state returns a package-level `var Err...`, not a string.
-- ✅ State changes are methods named as verbs (`Activate`, `MarkAsPaid`), using `Touch(func(m *core.Model))`.
+- ✅ State changes are methods named as verbs (`Assign`, `Resolve`), using `Touch(func(m *core.Model))`.
 - ✅ Legitimate values are typed constants with `Valid()`.
-- ❌ Never expose raw field mutation from outside — fields are embedded in the model, changed via methods.
-- ❌ Never assign `Status = "paid"` strings outside the model package.
+- ❌ Never expose raw field mutation from outside — ❌ never `ticket.Status = "open"` outside the model package.
 
 ```go
-// internal/billing/model/offering.go
-func NewOffering(input OfferingInput) (*Offering, error) {
-	chargeType := ChargeType(input.ChargeType)
+// internal/ticket/model/ticket.go
+type TicketStatus string
 
-	if !chargeType.Valid() {
-		return nil, ErrInvalidChargeType
+const (
+	OpenTicketStatus       TicketStatus = "open"
+	InProgressTicketStatus TicketStatus = "in_progress"
+	ResolvedTicketStatus   TicketStatus = "resolved"
+)
+
+func NewTicket(input TicketInput) (*Ticket, error) {
+	priority := TicketPriority(input.Priority)
+	if !priority.Valid() {
+		return nil, ErrInvalidPriority
 	}
 
-	return &Offering{
+	return &Ticket{
 		Model:       core.NewModel(),
-		Name:        input.Name,
+		Title:       input.Title,
 		Description: input.Description,
-		ChargeType:  chargeType,
-		Currency:    input.Currency,
-		Price:       input.Price,
-		IsActive:    input.IsActive,
+		Status:      OpenTicketStatus,
+		Priority:    priority,
 	}, nil
 }
 
-func (o *Offering) Activate() {
-	o.Touch(func(m *core.Model) {
-		o.IsActive = true
+func (t *Ticket) Assign(assigneeID string) error {
+	return t.transitionTo(InProgressTicketStatus, func() {
+		t.AssigneeID = &assigneeID
 	})
 }
-```
 
-BAD — endpoint changing state directly:
+func (t *Ticket) Resolve() error {
+	return t.transitionTo(ResolvedTicketStatus, nil)
+}
 
-```go
-// ❌ In an endpoint: reaching into the fields
-payment.Status = "paid"   // ❌ string literal + no UpdateAt touch
+func (t *Ticket) transitionTo(status TicketStatus, after func()) error {
+	if !t.Status.CanTransitionTo(status) {
+		return fmt.Errorf("%w: %s -> %s", ErrInvalidTicketTransition, t.Status, status)
+	}
 
-// ✅ In the usecase: explicit, guarded transition
-if err := payment.MarkAsPaid(); err != nil {
-	return customerr.Internal("payment state transition failed", err)
-}                          // pending -> paid only; illegal transitions return ErrInvalidPaymentTransition
+	t.Touch(func(m *core.Model) {
+		t.Status = status
+		if after != nil {
+			after()
+		}
+	})
+
+	return nil
+}
 ```
 
 ---
 
 ## 2. Repository (port)
 
-Interface at the root: `internal/billing/repository/repository.go`.
+Interface at the root: `internal/ticket/repository/repository.go`.
 
 **Rules:**
 
 - ✅ One interface per aggregate, methods named by business meaning.
 - ✅ All methods take `context.Context` first and return the model or count.
-- ✅ Not-found contracts are documented by the postgres impl: returns `(nil, nil)`, not `sql.ErrNoRows`.
-- ❌ No ORM/SQL types in the port (no `sqlx`), so usecases and mocks stay transport-free.
+- ✅ Not-found returns `(nil, nil)` — never `sql.ErrNoRows`.
+- ❌ No ORM/SQL types in the port — usecases and mocks stay transport-free.
 
 ```go
-// internal/billing/repository/repository.go
-type PaymentRepository interface {
-	Create(ctx context.Context, payment *model.Payment) error
-	FindByID(ctx context.Context, id string) (*model.Payment, error)
-	FindByExternalID(ctx context.Context, externalID string) (*model.Payment, error)
-	ListByUserID(ctx context.Context, userID string, params core.PaginationParams) ([]model.Payment, int, error)
+// internal/ticket/repository/repository.go
+type TicketRepository interface {
+	Create(ctx context.Context, ticket *model.Ticket) error
+	FindByID(ctx context.Context, id string) (*model.Ticket, error)
+	Update(ctx context.Context, ticket *model.Ticket) error
+	ListByStatus(ctx context.Context, status string, params core.PaginationParams) ([]model.Ticket, int, error)
+}
+
+type Transaction struct {
+	TicketRepo TicketRepository
 }
 ```
-
-Only add a method when a usecase needs it — no premature surface.
 
 ---
 
@@ -109,43 +102,33 @@ Prepared statements via `postgrex.Querier`.
 
 **Rules:**
 
-- ✅ Query map as `var paymentQueries = map[string]string{ ... }`, prepared once in the constructor.
+- ✅ Query map as `var ticketQueries = map[string]string{ ... }`, prepared once in the constructor.
 - ✅ `deleted_at IS NULL` on every read.
 - ✅ `context.WithTimeout(ctx, postgrex.DefaultReadTimeout)` per method.
 - ✅ Not-found returns `(nil, nil)` — never surface `sql.ErrNoRows` to callers.
 - ✅ `LIMIT $2 OFFSET $3` pagination plus a separate `COUNT(*)` query.
 - ❌ No inline queries in methods — always via the prepared `statement(name)`.
-- ❌ Never return `sql.ErrNoRows`.
 
 ```go
-// internal/billing/repository/postgres/payment_repository.go
-func (r *PaymentRepository) FindByID(ctx context.Context, id string) (*model.Payment, error) {
+// internal/ticket/repository/postgres/ticket_repository.go
+func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Ticket, error) {
 	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
 	defer cancel()
 
-	stmt, err := r.statement(findPaymentByIDQuery)
+	stmt, err := r.statement(findTicketByIDQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	var payment model.Payment
-	if err := stmt.QueryRowxContext(ctx, id).StructScan(&payment); err != nil {
+	var ticket model.Ticket
+	if err := stmt.QueryRowxContext(ctx, id).StructScan(&ticket); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // ✅ no row -> nil, nil
+			return nil, nil
 		}
 		return nil, err
 	}
 
-	return &payment, nil
-}
-```
-
-BAD — leaking `sql.ErrNoRows`:
-
-```go
-// ❌ Callers would have to import database/sql
-if errors.Is(err, sql.ErrNoRows) {
-	return nil, sql.ErrNoRows   // ❌
+	return &ticket, nil
 }
 ```
 
@@ -157,89 +140,70 @@ One file per implemented use case; interfaces aggregated in `usecase/usecase.go`
 
 **Rules:**
 
-- ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output` (e.g. `CreatePaymentInput`, `GetPaymentInput`, `ListPaymentsOutput`).
+- ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output`.
 - ✅ Infra failures wrap as `customerr.Integration(err)`.
 - ✅ Domain outcomes map: missing → `customerr.NotFound`, duplicate → `customerr.Conflict`, invalid → `customerr.Validation`.
 - ✅ Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
 - ✅ Interface stays in `usecase.go`, typed by the concrete `*usecase` constructing it.
-- ❌ No HTTP/`net/http` types in the usecase.
-- ❌ No `*sqlx.DB` in the usecase — repositories only.
+- ❌ No HTTP/`net/http` types in the usecase. ❌ No `*sqlx.DB` — repositories only.
+
+Simple case — `create_ticket.go`:
 
 ```go
-// internal/billing/usecase/get_payment.go
-func (u *getPaymentUsecase) GetPayment(ctx context.Context, input GetPaymentInput) (*model.Payment, error) {
-	payment, err := u.paymentRepo.FindByID(ctx, input.PaymentID)
+func (u *createTicketUsecase) CreateTicket(
+	ctx context.Context,
+	input CreateTicketInput,
+) (CreateTicketOutput, error) {
+	ticket, err := model.NewTicket(input)
 	if err != nil {
-		return nil, customerr.Integration(err)
+		return CreateTicketOutput{}, customerr.Validation(err.Error())
 	}
 
-	if payment == nil {
-		return nil, customerr.NotFound("payment not found")
+	if err := u.ticketRepo.Create(ctx, ticket); err != nil {
+		return CreateTicketOutput{}, customerr.Integration(err)
 	}
 
-	return payment, nil
+	return CreateTicketOutput{ID: ticket.ID}, nil
 }
 ```
 
-Multi-repo write, transactional (`create_payment.go`):
+Transactional case — `assign_ticket.go`:
 
 ```go
-// internal/billing/usecase/create_payment.go
-err = u.txManager.Transact(func(tx repository.Transaction) error {
-	existing, err := tx.PaymentRepo.FindByExternalID(ctx, input.ExternalID)
-	if err != nil {
-		return customerr.Integration(err)
-	}
+func (u *assignTicketUsecase) AssignTicket(
+	ctx context.Context,
+	input AssignTicketInput,
+) error {
+	err := u.txManager.Transact(func(tx repository.Transaction) error {
+		ticket, err := tx.TicketRepo.FindByID(ctx, input.TicketID)
+		if err != nil {
+			return customerr.Integration(err)
+		}
 
-	if existing != nil {
-		paymentID = existing.ID
+		if ticket == nil {
+			return customerr.NotFound("ticket not found")
+		}
+
+		if err := ticket.Assign(input.AssigneeID); err != nil {
+			return customerr.Validation(err.Error())
+		}
+
+		if err := tx.TicketRepo.Update(ctx, ticket); err != nil {
+			return customerr.Integration(err)
+		}
+
 		return nil
-	}
+	})
 
-	payment := model.NewPayment(model.PaymentInput{ /* ... */ })
-	if err := payment.MarkAsPaid(); err != nil {
-		return customerr.Internal("payment state transition failed", err)
-	}
-
-	if err := tx.PaymentRepo.Create(ctx, payment); err != nil {
-		return customerr.Integration(err)
-	}
-
-	paymentID = payment.ID
-	created = true
-
-	return nil
-})
-```
-
-The `Transaction` bundle (sets of repos usable inside a tx) is declared in `repository/repository.go`:
-
-```go
-type Transaction struct {
-	PaymentRepo  PaymentRepository
-	OfferingRepo OfferingRepository
+	return err
 }
-```
-
-The postgres manager wires it to `postgrex.RunInTx` (`repository/postgres/transaction_manager.go`).
-
-BAD — skipping the transaction for two writes, or calling the repo twice (once for check, once inside tx) — use the tx copy:
-
-```go
-// ❌ Non-transactional read+write
-found, _ := u.paymentRepo.FindByExternalID(ctx, input.ExternalID)
-...
-u.paymentRepo.Create(ctx, payment) // ❌ not atomic with the check
-
-// ✅ Transactional: both reads and writes inside Transact
-u.txManager.Transact(func(tx repository.Transaction) error { ... })
 ```
 
 ---
 
 ## 5. http/endpoint
 
-Parse via `httpx.ParseRequest`, call the usecase, answer with `httpx.Write*Response` or `httpx.WriteError`.
+Parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Response` or `httpx.WriteError`.
 
 **Rules:**
 
@@ -247,59 +211,43 @@ Parse via `httpx.ParseRequest`, call the usecase, answer with `httpx.Write*Respo
 - ✅ Setters answer `httpx.WriteCreatedResponse`, reads `httpx.WriteOKResponse`.
 - ✅ Every error goes to `httpx.WriteError` (maps `customerr` type → HTTP status).
 - ✅ Path params via `httpx.GetPathParam`.
-- ✅ Method is a handler on the `Endpoint` struct: `func (e *Endpoint) CreatePaymentV1(w, r)`.
-- ❌ No business logic or repository access in the endpoint.
-- ❌ Don't hand-roll JSON decode/validate — use `httpx.ParseRequest`.
+- ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll JSON decode/validate.
 
 ```go
-// internal/billing/http/endpoint/create_payment_v1.go
-type CreatePaymentV1Request struct {
-	UserID        string `json:"user_id"        validate:"required,min=1"`
-	OfferingID    string `json:"offering_id"    validate:"required,min=1"`
-	ExternalID    string `json:"external_id"    validate:"required,min=1"`
-	ChargedAmount int    `json:"charged_amount" validate:"required"`
+// internal/ticket/http/endpoint/create_ticket_v1.go
+type CreateTicketV1Request struct {
+	Title       string `json:"title"       validate:"required,min=1"`
+	Description string `json:"description" validate:"required,min=1"`
+	Priority    string `json:"priority"    validate:"required,min=1"`
 }
 
-func (e *Endpoint) CreatePaymentV1(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	request, err := httpx.ParseRequest[CreatePaymentV1Request](w, r)
+	request, err := httpx.ParseRequest[CreateTicketV1Request](w, r)
 	if err != nil {
 		return
 	}
 
-	output, err := e.createPayment.CreatePayment(ctx, usecase.CreatePaymentInput{
-		UserID:        request.UserID,
-		OfferingID:    request.OfferingID,
-		ExternalID:    request.ExternalID,
-		ChargedAmount: request.ChargedAmount,
+	output, err := e.createTicket.CreateTicket(ctx, usecase.CreateTicketInput{
+		Title:       request.Title,
+		Description: request.Description,
+		Priority:    request.Priority,
 	})
 	if err != nil {
 		httpx.WriteError(w, r, err)
 		return
 	}
 
-	httpx.WriteCreatedResponse(w, CreatePaymentV1Response{
-		ID: output.ID,
-	})
+	httpx.WriteCreatedResponse(w, CreateTicketV1Response{ID: output.ID})
 }
-```
-
-BAD — fat handler:
-
-```go
-// ❌ Endpoint reaching into the repository + raw JSON
-var req struct{ ... }
-json.NewDecoder(r.Body).Decode(&req)
-payment := &model.Payment{ /* field assignments */ } // ❌ no NewPayment, no invariants
-db.ExecContext(ctx, "INSERT INTO payments ...")       // ❌ SQL in the handler
 ```
 
 ---
 
 ## 6. http/route.go
 
-Register under `/api/v1/...` (the router is mounted at `/api`; group resource routes under `/v1/...` to land on `/api/v1/...`).
+Register under `/api/v1/...` (the router is mounted at `/api`; group resource routes under `/v1/...`).
 
 **Rules:**
 
@@ -308,23 +256,20 @@ Register under `/api/v1/...` (the router is mounted at `/api`; group resource ro
 - ❌ No usecase calls in the router — routing only.
 
 ```go
-// internal/billing/http/route.go
+// internal/ticket/http/route.go
 func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
-	r.Route("/v1/offerings", func(r chi.Router) {
-		r.Post("/", ep.CreateOfferingV1)
-	})
-
-	r.Route("/v1/payments", func(r chi.Router) {
-		r.Post("/", ep.CreatePaymentV1)
-		r.Get("/", ep.ListPaymentsV1)
-		r.Get("/{id}", ep.GetPaymentV1)
+	r.Route("/v1/tickets", func(r chi.Router) {
+		r.Post("/", ep.CreateTicketV1)
+		r.Get("/", ep.ListTicketsV1)
+		r.Get("/{id}", ep.GetTicketV1)
+		r.Patch("/{id}/assign", ep.AssignTicketV1)
 	})
 }
 ```
 
 ---
 
-## 7. Wiring the module — `<domain>/<domain>.go`
+## 7. Wiring — `<domain>/<domain>.go`
 
 Composition root. Build the transaction manager, postgres repositories, usecases, endpoints; register routes.
 
@@ -335,24 +280,20 @@ Composition root. Build the transaction manager, postgres repositories, usecases
 - ❌ No wiring in endpoints/usecases — declarative, top-down.
 
 ```go
-// internal/billing/billing.go
+// internal/ticket/ticket.go
 func New(r chi.Router, db *sqlx.DB) error {
 	txManager := postgres.NewTransactionManager(db)
 
-	offeringRepo, err := postgres.NewOfferingRepository(db)
-	if err != nil {
-		return err
-	}
-	paymentRepo, err := postgres.NewPaymentRepository(db)
+	ticketRepo, err := postgres.NewTicketRepository(db)
 	if err != nil {
 		return err
 	}
 
 	ep := http.SetupEndpoints(
-		usecase.NewCreateOfferingUsecase(offeringRepo),
-		usecase.NewCreatePaymentUsecase(txManager, offeringRepo, paymentRepo, console.NewNotifier()),
-		usecase.NewGetPaymentUsecase(paymentRepo),
-		usecase.NewListPaymentsUsecase(paymentRepo),
+		usecase.NewCreateTicketUsecase(ticketRepo),
+		usecase.NewAssignTicketUsecase(txManager, console.NewNotifier()),
+		usecase.NewGetTicketUsecase(ticketRepo),
+		usecase.NewListTicketsUsecase(ticketRepo),
 	)
 
 	http.RegisterRoutes(r, ep)
@@ -361,22 +302,24 @@ func New(r chi.Router, db *sqlx.DB) error {
 }
 ```
 
-Read adapters for other domains go in `<domain>/public.go`, using the domain's own `client` faces:
+Read adapters for other domains go in `<domain>/public.go`:
 
 ```go
-// internal/billing/public.go
-func NewPaymentReader(db *sqlx.DB) (client.PaymentReader, error) {
-	paymentRepo, err := postgres.NewPaymentRepository(db)
+// internal/ticket/public.go
+func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
+	ticketRepo, err := postgres.NewTicketRepository(db)
 	if err != nil {
 		return nil, err
 	}
 
-	return public.NewPaymentReader(usecase.NewGetPaymentUsecase(paymentRepo)), nil
+	getTicketUc := usecase.NewGetTicketUsecase(ticketRepo)
+
+	return public.NewTicketReader(getTicketUc), nil
 }
 ```
 
 ---
 
-## Structural changes (new protocol, new port backend, cross-module read, external dependency)
+## Structural changes
 
 Not covered here — see "Structure" in `AGENTS.md`, [docs/versioning.md](versioning.md), and [docs/cross-module-reads.md](cross-module-reads.md). This file only covers the fixed layer order for implementing a single domain feature.

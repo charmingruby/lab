@@ -1,7 +1,7 @@
 package httpx
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,7 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/charmingruby/new/pkg/validator"
+	"github.com/charmingruby/lab/internal/shared/core"
+	"github.com/charmingruby/lab/pkg/validator"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 func ParseRequest[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 	var obj T
 
-	if err := json.NewDecoder(r.Body).Decode(&obj); err != nil {
+	if err := json.UnmarshalRead(r.Body, &obj); err != nil {
 		WriteResponse(w, http.StatusBadRequest, map[string]string{
 			"message": fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
 		})
@@ -58,18 +59,23 @@ func GetQueryParam(r *http.Request, key string) (string, error) {
 	return param, nil
 }
 
-func GetPageQueryParam(r *http.Request) int {
-	const defaultPage = 1
-
-	pageStr := r.URL.Query().Get("page")
-	if pageStr == "" {
-		return defaultPage
+func GetPaginationParams(r *http.Request) core.PaginationParams {
+	params := core.PaginationParams{
+		Page:  1,
+		Limit: core.DefaultPageSize,
 	}
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < defaultPage {
-		return defaultPage
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil {
+			params.Page = page
+		}
 	}
 
-	return page
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil {
+			params.Limit = limit
+		}
+	}
+
+	return params.Validate()
 }

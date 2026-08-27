@@ -1,6 +1,8 @@
 name: Test
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -13,21 +15,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.26.0
-          cache: false
+          go-version: ${{ vars.GO_VERSION }}
+          cache: true
 
-      - name: Install dependencies
-        run: |
-          go mod tidy
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
 
       - name: Install mockery
-        run: |
-          go install github.com/vektra/mockery/v2@v2.53.4
-
-      - name: Generate mocks
-        run: |
-          make mock
+        run: go install github.com/vektra/mockery/v3@latest
 
       - name: Test
-        run: |
-          go test ./... -race
+        run: task test

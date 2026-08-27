@@ -3,3 +3,9 @@ tmp
 
 # environment variables
 .env
+
+# non-generic coding agents
+.claude
+
+# binaries
+bin

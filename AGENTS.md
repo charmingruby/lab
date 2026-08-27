@@ -36,15 +36,6 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Cross-cutting concerns go in `internal/shared` (`core`, `customerr`, `httpx`). Reusable infra goes in `pkg`.
 
-### Adding a feature — fixed layer order
-
-1. **`model`** — constructor (`New<Model>(input)`), invariants, state changes as explicit methods using `core.Model.Touch`.
-2. **`repository`** — add the method to the port interface.
-3. **`repository/postgres`** — prepared statements via `postgrex.Querier`. Not-found returns `(nil, nil)`, never `sql.ErrNoRows`. Callers check for `nil`.
-4. **`usecase`** — one file per implemented use case; all use case interfaces (the mocks mockery generates) are aggregated in a single `usecase.go`. Infra failures wrap as `customerr.Integration(err)`. Domain outcomes map to `NotFound`/`Conflict`/`Validation`. Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
-5. **`http/endpoint`** — parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Response` or `httpx.WriteError` (error type maps to HTTP status).
-6. **`http/route.go`** — register under `/api/v1/...`.
-
 ## Tests
 
 - External packages only (`endpoint_test`, `usecase_test`), table-driven, testify.
@@ -54,21 +45,21 @@ Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains
 
 CRITICAL: Only load the reference below that matches your current task. Do NOT read all docs up front — most work needs nothing beyond this file.
 
-| Task                                                                                                                    | Load                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Implement a domain feature (model → repository → usecase → endpoint)                                                    | [docs/coding-patterns.md](docs/coding-patterns.md) + mirror `internal/billing/` |
-| Add a layer, protocol, or module boundary                                                                               | "Structure" above + mirror `internal/billing/`                                  |
-| Add or consume an external integration (storage, email, cache, third-party API)                                         | [docs/external-integrations.md](docs/external-integrations.md)                  |
-| Expose an application boundary — new/handled protocol, or a versioned HTTP/gRPC/queue interface (incl. break/deprecate) | [docs/versioning.md](docs/versioning.md)                                        |
-| Read another module's data                                                                                              | [docs/cross-module-reads.md](docs/cross-module-reads.md)                        |
-| Tests                                                                                                                   | "Tests" above + existing `*_test.go` in the domain                              |
+| Task | Load |
+| --- | --- |
+| Implement a domain feature (model → repository → usecase → endpoint) | [docs/coding-patterns.md](docs/coding-patterns.md) + mirror `internal/ticket/` |
+| Add a layer, protocol, or module boundary | "Structure" above + mirror `internal/ticket/` |
+| Add or consume an external integration (storage, email, cache, third-party API) | [docs/external-integrations.md](docs/external-integrations.md) |
+| Expose an application boundary — new/handled protocol, or a versioned HTTP/gRPC/queue interface | [docs/versioning.md](docs/versioning.md) |
+| Read another module's data | [docs/cross-module-reads.md](docs/cross-module-reads.md) |
+| Tests | "Tests" above + existing `*_test.go` in the domain |
 
 ## Rules
 
 **Always:**
 
 - Keep changes inside the active module.
-- Match naming and layout in `internal/billing/` exactly — new domain, same shape.
+- Match naming and layout in `internal/ticket/` exactly — new domain, same shape.
 - Wire features declaratively in `<module>.go`.
 
 **Never:**
@@ -81,5 +72,5 @@ CRITICAL: Only load the reference below that matches your current task. Do NOT r
 
 ## When in Doubt
 
-1. Copy the pattern from `internal/billing/`.
-2. If `internal/billing/` doesn't cover the case, pick the option that adds the least new structure.
+1. Copy the pattern from `internal/ticket/`.
+2. If `internal/ticket/` doesn't cover the case, pick the option that adds the least new structure.

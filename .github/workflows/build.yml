@@ -1,6 +1,8 @@
 name: Build
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -13,13 +15,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.26.0
-          cache: false
+          go-version: ${{ vars.GO_VERSION }}
+          cache: true
 
-      - name: Install dependencies
-        run: |
-          go mod tidy
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
 
       - name: Build
-        run: |
-          go build ./cmd/api/main.go
+        run: task build

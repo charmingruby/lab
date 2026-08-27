@@ -1,0 +1,22 @@
+pkgname: mocks
+packages:
+  github.com/charmingruby/lab/internal/ticket/usecase:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/lab/internal/ticket/repository:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/lab/internal/ticket/client:
+    config:
+      all: true
+      dir: test/ticket/mocks
+      filename: "{{.InterfaceName}}_mock.go"
+  github.com/charmingruby/lab/internal/shared:
+    config:
+      all: true
+      dir: test/shared/mocks
+      filename: "{{.InterfaceName}}_mock.go"
