@@ -21,28 +21,28 @@ import (
 
 func TestAssignTicketV1(t *testing.T) {
 	tests := []struct {
-		name          string
-		ticketID      string
 		body          any
 		mockSetup     func(uc *mocks.MockAssignTicketUsecase)
-		wantStatus    int
 		wantBodyCheck func(t *testing.T, body map[string]any)
+		name          string
+		ticketID      string
+		wantStatus    int
 	}{
 		{
-			name:     "invalid JSON body returns 400",
-			ticketID: "ticket-123",
-			body:     "not json",
-			mockSetup: func(uc *mocks.MockAssignTicketUsecase) {},
+			name:       "invalid JSON body returns 400",
+			ticketID:   "ticket-123",
+			body:       "not json",
+			mockSetup:  func(uc *mocks.MockAssignTicketUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
 			},
 		},
 		{
-			name:     "missing assignee_id returns 400",
-			ticketID: "ticket-123",
-			body:     map[string]string{},
-			mockSetup: func(uc *mocks.MockAssignTicketUsecase) {},
+			name:       "missing assignee_id returns 400",
+			ticketID:   "ticket-123",
+			body:       map[string]string{},
+			mockSetup:  func(uc *mocks.MockAssignTicketUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -123,7 +123,12 @@ func TestAssignTicketV1(t *testing.T) {
 				reqBody = bytes.NewBuffer(b)
 			}
 
-			req := httptest.NewRequest(http.MethodPatch, "/v1/tickets/"+tt.ticketID+"/assign", reqBody)
+			req := httptest.NewRequestWithContext(
+				context.Background(),
+				http.MethodPatch,
+				"/v1/tickets/"+tt.ticketID+"/assign",
+				reqBody,
+			)
 			req.Header.Set("Content-Type", "application/json")
 
 			rctx := chi.NewRouteContext()

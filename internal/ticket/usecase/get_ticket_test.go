@@ -5,12 +5,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestGetTicket(t *testing.T) {
@@ -25,12 +27,12 @@ func TestGetTicket(t *testing.T) {
 	existingTicket.ID = ticketID
 
 	tests := []struct {
-		name       string
-		input      usecase.GetTicketInput
-		mockSetup  func(repo *mocks.MockTicketRepository)
-		want       *model.Ticket
-		wantErr    bool
-		errType    customerr.ErrorType
+		mockSetup func(repo *mocks.MockTicketRepository)
+		want      *model.Ticket
+		name      string
+		input     usecase.GetTicketInput
+		errType   customerr.ErrorType
+		wantErr   bool
 	}{
 		{
 			name:  "repository error returns integration error",
@@ -77,13 +79,13 @@ func TestGetTicket(t *testing.T) {
 			got, err := uc.GetTicket(context.Background(), tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.True(t, customerr.IsType(err, tt.errType))
 				assert.Nil(t, got)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}

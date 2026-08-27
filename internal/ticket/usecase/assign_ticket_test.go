@@ -6,15 +6,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 	"github.com/charmingruby/lab/pkg/o11y"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestMain(m *testing.M) {
@@ -61,12 +62,12 @@ func TestAssignTicket(t *testing.T) {
 	assigneeID := "user-456"
 
 	tests := []struct {
-		name      string
-		input     usecase.AssignTicketInput
 		setupMock func(t *testing.T) *fakeTxManager
 		notifier  func(t *testing.T) *mocks.MockNotificationClient
-		wantErr   bool
+		input     usecase.AssignTicketInput
+		name      string
 		errType   customerr.ErrorType
+		wantErr   bool
 	}{
 		{
 			name:  "transaction error returns error",
@@ -93,7 +94,7 @@ func TestAssignTicket(t *testing.T) {
 			notifier: func(t *testing.T) *mocks.MockNotificationClient {
 				return mocks.NewMockNotificationClient(t)
 			},
-		wantErr: true,
+			wantErr: true,
 		},
 		{
 			name:  "find by id error returns integration error",
@@ -210,7 +211,14 @@ func TestAssignTicket(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errType != "" {
-					assert.True(t, customerr.IsType(err, tt.errType), "expected errType %s, got: %v (type: %T)", tt.errType, err, err)
+					assert.True(
+						t,
+						customerr.IsType(err, tt.errType),
+						"expected errType %s, got: %v (type: %T)",
+						tt.errType,
+						err,
+						err,
+					)
 				}
 				return
 			}

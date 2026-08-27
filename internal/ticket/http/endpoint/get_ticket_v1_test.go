@@ -37,11 +37,11 @@ func TestGetTicketV1(t *testing.T) {
 	}
 
 	tests := []struct {
+		mockSetup     func(uc *mocks.MockGetTicketUsecase)
+		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		ticketID      string
-		mockSetup     func(uc *mocks.MockGetTicketUsecase)
 		wantStatus    int
-		wantBodyCheck func(t *testing.T, body map[string]any)
 	}{
 		{
 			name:     "ticket not found returns 404",
@@ -96,7 +96,7 @@ func TestGetTicketV1(t *testing.T) {
 
 			ep := endpoint.New(nil, nil, uc, nil)
 
-			req := httptest.NewRequest(http.MethodGet, "/v1/tickets/"+tt.ticketID, nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/tickets/"+tt.ticketID, nil)
 
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", tt.ticketID)

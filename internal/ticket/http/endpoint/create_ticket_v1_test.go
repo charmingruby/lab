@@ -2,6 +2,7 @@ package endpoint_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,13 +10,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 	"github.com/charmingruby/lab/pkg/o11y"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestMain(m *testing.M) {
@@ -25,16 +27,16 @@ func TestMain(m *testing.M) {
 
 func TestCreateTicketV1(t *testing.T) {
 	tests := []struct {
-		name          string
 		body          any
 		mockSetup     func(uc *mocks.MockCreateTicketUsecase)
-		wantStatus    int
 		wantBodyCheck func(t *testing.T, body map[string]any)
+		name          string
+		wantStatus    int
 	}{
 		{
-			name:      "invalid JSON body returns 400",
-			body:      "not json",
-			mockSetup: func(uc *mocks.MockCreateTicketUsecase) {},
+			name:       "invalid JSON body returns 400",
+			body:       "not json",
+			mockSetup:  func(uc *mocks.MockCreateTicketUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -45,7 +47,7 @@ func TestCreateTicketV1(t *testing.T) {
 			body: map[string]string{
 				"title": "Test Ticket",
 			},
-			mockSetup: func(uc *mocks.MockCreateTicketUsecase) {},
+			mockSetup:  func(uc *mocks.MockCreateTicketUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -132,7 +134,7 @@ func TestCreateTicketV1(t *testing.T) {
 				reqBody = bytes.NewBuffer(b)
 			}
 
-			req := httptest.NewRequest(http.MethodPost, "/v1/tickets", reqBody)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/tickets", reqBody)
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 

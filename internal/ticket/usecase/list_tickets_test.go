@@ -5,13 +5,15 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/charmingruby/lab/internal/shared/core"
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestListTickets(t *testing.T) {
@@ -35,12 +37,12 @@ func TestListTickets(t *testing.T) {
 	defaultParams := core.PaginationParams{Page: 1, Limit: core.DefaultPageSize}
 
 	tests := []struct {
-		name       string
-		input      usecase.ListTicketsInput
-		mockSetup  func(repo *mocks.MockTicketRepository)
-		want       usecase.ListTicketsOutput
-		wantErr    bool
-		errType    customerr.ErrorType
+		mockSetup func(repo *mocks.MockTicketRepository)
+		name      string
+		errType   customerr.ErrorType
+		input     usecase.ListTicketsInput
+		want      usecase.ListTicketsOutput
+		wantErr   bool
 	}{
 		{
 			name:  "repository error returns integration error",
@@ -99,13 +101,13 @@ func TestListTickets(t *testing.T) {
 			got, err := uc.ListTickets(context.Background(), tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.True(t, customerr.IsType(err, tt.errType))
 				assert.Equal(t, usecase.ListTicketsOutput{}, got)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}

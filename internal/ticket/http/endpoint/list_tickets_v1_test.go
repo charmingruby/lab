@@ -1,6 +1,7 @@
 package endpoint_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -41,11 +42,11 @@ func TestListTicketsV1(t *testing.T) {
 	tickets[1].CreatedAt = now
 
 	tests := []struct {
+		setupMock     func(uc *mocks.MockListTicketsUsecase)
+		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		queryParams   string
-		setupMock     func(uc *mocks.MockListTicketsUsecase)
 		wantStatus    int
-		wantBodyCheck func(t *testing.T, body map[string]any)
 	}{
 		{
 			name:        "missing status query param returns 500",
@@ -91,16 +92,17 @@ func TestListTicketsV1(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, float64(2), body["total"])
-				assert.Equal(t, float64(1), body["page"])
-				assert.Equal(t, float64(25), body["limit"])
-				assert.Equal(t, float64(1), body["total_pages"])
+				assert.InEpsilon(t, 2, body["total"], 0.001)
+				assert.InEpsilon(t, 1, body["page"], 0.001)
+				assert.InEpsilon(t, 25, body["limit"], 0.001)
+				assert.InEpsilon(t, 1, body["total_pages"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
 				assert.True(t, ok)
 				assert.Len(t, ticketList, 2)
 
-				first := ticketList[0].(map[string]any)
+				first, ok := ticketList[0].(map[string]any)
+				assert.True(t, ok)
 				assert.Equal(t, "ticket-1", first["id"])
 				assert.Equal(t, "Ticket 1", first["title"])
 				assert.Equal(t, "open", first["status"])
@@ -126,7 +128,7 @@ func TestListTicketsV1(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, float64(0), body["total"])
+				assert.InEpsilon(t, 0, body["total"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
 				assert.True(t, ok)
@@ -143,7 +145,7 @@ func TestListTicketsV1(t *testing.T) {
 			ep := endpoint.New(nil, nil, nil, uc)
 
 			url := "/v1/tickets" + tt.queryParams
-			req := httptest.NewRequest(http.MethodGet, url, nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 			rec := httptest.NewRecorder()
 
 			ep.ListTicketsV1(rec, req)
