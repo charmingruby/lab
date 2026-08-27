@@ -92,10 +92,10 @@ func TestListTicketsV1(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.InEpsilon(t, 2, body["total"], 0.001)
-				assert.InEpsilon(t, 1, body["page"], 0.001)
-				assert.InEpsilon(t, 25, body["limit"], 0.001)
-				assert.InEpsilon(t, 1, body["total_pages"], 0.001)
+				assert.InDelta(t, 2, body["total"], 0.001)
+				assert.InDelta(t, 1, body["page"], 0.001)
+				assert.InDelta(t, 25, body["limit"], 0.001)
+				assert.InDelta(t, 1, body["total_pages"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
 				assert.True(t, ok)
@@ -128,7 +128,7 @@ func TestListTicketsV1(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, float64(0), body["total"])
+				assert.InDelta(t, 0, body["total"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
 				assert.True(t, ok)
