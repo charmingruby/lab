@@ -128,7 +128,7 @@ func TestListTicketsV1(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.InEpsilon(t, 0, body["total"], 0.001)
+				assert.Equal(t, float64(0), body["total"])
 
 				ticketList, ok := body["tickets"].([]any)
 				assert.True(t, ok)
