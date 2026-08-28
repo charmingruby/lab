@@ -8,7 +8,7 @@ Any dependency the app doesn't own — object storage, email delivery, cache, a 
 
 `repository/` never hosts this. External integrations aren't a domain's source of truth — they're consumed, so they're always a `client` port.
 
-**Messaging is not an external integration.** A queue is a *delivery mechanism* and lives in `delivery/queue/`. See "Structure" in AGENTS.md.
+**Messaging is not an external integration.** A queue is a *delivery mechanism* and lives in `delivery/queue/`. See [architecture.md](./architecture.md).
 
 ## Decision: domain-specific vs. shared
 
@@ -16,7 +16,7 @@ Any dependency the app doesn't own — object storage, email delivery, cache, a 
 
 ### Used by a single domain
 
-Port and adapter live inside that domain, same shape as any other `client/` port:
+Port and adapter live inside that domain, same shape as any other `client/`:
 
 ```
 internal/ticket/
@@ -24,6 +24,8 @@ internal/ticket/
 │   ├── notifier.go        # outbound port
 │   └── storage.go         # new port: interface only
 ```
+
+Source: [internal/ticket/client/](../../internal/ticket/client/)
 
 ```go
 // internal/ticket/client/storage.go

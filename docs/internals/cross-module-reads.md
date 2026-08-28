@@ -10,7 +10,7 @@ The consumer codes only against the produced `client` port. Mocks are generated 
 
 ## Example — `ticket` exposes `TicketReader`
 
-**1. The port** (`internal/ticket/client/notifier.go`):
+**1. The port** — [internal/ticket/client/notifier.go](../../internal/ticket/client/notifier.go):
 
 ```go
 type TicketReader interface {
@@ -18,7 +18,7 @@ type TicketReader interface {
 }
 ```
 
-**2. The adapter** (`internal/ticket/public/ticket_reader.go`) — thin struct over a use case:
+**2. The adapter** — [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go) — thin struct over a use case:
 
 ```go
 type TicketReader struct {
@@ -39,7 +39,7 @@ func (r *TicketReader) GetTicketStatus(ctx context.Context, ticketID string) (st
 }
 ```
 
-**3. The assembly** (`internal/ticket/public.go`) — builds repos + use case, returns the adapter typed as the port:
+**3. The assembly** — [internal/ticket/public.go](../../internal/ticket/public.go) — builds repos + use case, returns the adapter typed as the port:
 
 ```go
 func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {

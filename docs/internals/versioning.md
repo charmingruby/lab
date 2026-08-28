@@ -5,11 +5,13 @@
 - **Non-HTTP protocols version the same way**, at the caller-facing boundary: gRPC registers `ServiceV1`/`ServiceV2`; a queue — a delivery mechanism in both directions — binds versioned events or queue names on the message boundary for producers and consumers alike.
 - **Never version `model/`, `usecase/`, or `repository/`.** These stay single-version regardless of how many API versions call them.
 
+Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/), [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
+
 ## Example — v1 → v2
 
 A breaking change (e.g. `title` becomes `name`) adds a new endpoint file; the old one stays untouched.
 
-**1. `http/endpoint/create_ticket_v1.go`** — unchanged:
+**1. [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)** — unchanged:
 
 ```go
 type CreateTicketV1Request struct {
@@ -37,7 +39,7 @@ func (e *Endpoint) CreateTicketV2(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**3. `http/route.go`** — registers both until callers migrate, then drops v1:
+**3. [internal/ticket/http/route.go](../../internal/ticket/http/route.go)** — registers both until callers migrate, then drops v1:
 
 ```go
 r.Route("/v1/tickets", func(r chi.Router) {

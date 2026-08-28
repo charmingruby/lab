@@ -1,45 +1,40 @@
-# AGENTS.md
+# Lab
 
-Go backend template. Starter scaffold with Postgres, migrations, lint and mocks already wired. Rename the `go.mod` module and create the domain module in `internal/` on first use.
+A lean Go foundation for proving ideas fast.
 
-## Commands
+## Principles
 
-- Local Infrastructure: `docker compose up -d` (matches `.env.example`).
-- Dev server: `air` (builds `./cmd/api/main.go`, hot reload).
-- Tests: `make test` — regenerates mocks first, so it needs `mockery` installed; then `go test ./... -race`.
-- Lint: `make lint` (strict config in `.golangci.yml`; `make lint-fix` to auto-fix).
-- Migrations: `make new-mig NAME=<name>` / `mig-up` / `mig-down` on `db/migration`.
-- All other scripts live in the `Makefile`.
+This template encodes a single idea: **ports and adapters, nothing else.** Every domain follows the same dependency spine, every layer has exactly one job, every file lives where the pattern says it lives. Do not introduce machinery because it looks architecturally impressive. Understand the real constraint, then fight for the smallest model that makes the correct behavior unsurprising.
 
-## Structure
+Channel both "measure twice, cut once" and "yagni." Fight scope creep. Try to honor the dev's intent in both a minimal and realistic fashion.
 
-A domain is a **ports and adapters** module in `internal/<domain>`, one dependency spine:
+The rest of this document is meant to help you navigate the codebase and make changes effectively. Think of these instructions less as "hard rules," more as "good defaults." The developer's preferences should be able to override anything here.
+
+Use the terminology defined in [docs/internals/glossary.md](docs/internals/glossary.md).
+
+## Architectural rules
+
+1. **Never skip the usecase.** The usecase owns business validation, transaction boundaries, and error mapping. Skipping it means scattered logic, no transaction safety, and tests that cannot isolate behavior.
+2. **Never import another domain's internals.** Use its `client` port instead. Cross-module imports create invisible coupling and make it impossible to change one domain without breaking another.
+3. **Never add layers that do not exist.** The pattern has exactly four layers — protocol, usecase, port (repository/client), adapter (postgres/console). Extra layers do not add safety; they add surface area for bugs.
+
+See [docs/internals/architecture.md](docs/internals/architecture.md) for delivery mechanisms, module boundaries, repositories, clients, and external integrations.
+
+## Domain structure
+
+Domains use ports and adapters:
 
 ```
-<protocol> → usecase → repository (port) → repository/postgres
-                              → client (port)   → client/console
-                              → model
+<protocol> → usecase → port → adapter
+                       ↓
+                     model
 ```
 
-**Delivery mechanism layout — a mechanism is any transport the domain speaks:**
+Each domain lives under `internal/<domain>/`. Cross-cutting concerns live in `internal/shared/`. Reusable infrastructure goes in `pkg/` — zero domain awareness, never imports from `internal/`.
 
-- **One mechanism** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/` and `route.go`. No `delivery/` wrapper.
-- **Two or more mechanisms**: nested — introduce `delivery/` as the parent. Move the existing `http/` to `delivery/http/`. Add the new mechanism beside it: `delivery/grpc/`, `delivery/queue/`.
+## Development
 
-Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
-
-**Messaging is always a delivery mechanism.** A queue is a transport in both directions — a consumer is inbound (listens, like HTTP receives requests), a producer is outbound (delivers events to another system). Both live in `delivery/queue/` and both count toward the `delivery/` split: adding any queue to a domain that has HTTP forces the nested layout. Messaging never becomes a `client` integration.
-
-**`repository/` shape** — template for any port with multiple backends: interface at the root (`repository/repository.go`), each implementation in its own subpackage (`repository/postgres/`). Same shape for `client/` (port in `client/notifier.go`, adapter in `client/console/`) and for messaging adapters inside `delivery/queue/` (`queue/kafka`, `queue/sqs`).
-
-**External dependencies (storage, email, cache, third-party APIs)** — same shape as `client/`, raw connection in `pkg/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [docs/external-integrations.md](docs/external-integrations.md).
-
-Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Cross-cutting concerns go in `internal/shared` (`core`, `customerr`, `httpx`). Reusable infra goes in `pkg`.
-
-## Tests
-
-- External packages only (`endpoint_test`, `usecase_test`), table-driven, testify.
-- Mocks generated with mockery into `test/<domain>/mocks` and `test/shared/mocks`; regenerate with `make mock` and commit them.
+Use the Taskfile for project commands. See [docs/internals/commands.md](docs/internals/commands.md) for available commands.
 
 ## Progressive Documentation Loading
 
@@ -47,28 +42,27 @@ CRITICAL: Only load the reference below that matches your current task. Do NOT r
 
 | Task | Load |
 | --- | --- |
-| Implement a domain feature (model → repository → usecase → endpoint) | [docs/coding-patterns.md](docs/coding-patterns.md) + mirror `internal/ticket/` |
-| Add a layer, protocol, or module boundary | "Structure" above + mirror `internal/ticket/` |
-| Add or consume an external integration (storage, email, cache, third-party API) | [docs/external-integrations.md](docs/external-integrations.md) |
-| Expose an application boundary — new/handled protocol, or a versioned HTTP/gRPC/queue interface | [docs/versioning.md](docs/versioning.md) |
-| Read another module's data | [docs/cross-module-reads.md](docs/cross-module-reads.md) |
-| Tests | "Tests" above + existing `*_test.go` in the domain |
+| Implement a domain feature (model → repository → usecase → endpoint) | [docs/internals/coding-patterns.md](docs/internals/coding-patterns.md) + mirror `internal/ticket/` |
+| Add a layer, protocol, or module boundary | [docs/internals/architecture.md](docs/internals/architecture.md) + mirror `internal/ticket/` |
+| Add or consume an external integration (storage, email, cache, third-party API) | [docs/internals/external-integrations.md](docs/internals/external-integrations.md) |
+| Expose an application boundary — new/handled protocol, or a versioned HTTP/gRPC/queue interface | [docs/internals/versioning.md](docs/internals/versioning.md) |
+| Read another module's data | [docs/internals/cross-module-reads.md](docs/internals/cross-module-reads.md) |
+| Understand the architecture or runtime flow | [docs/internals/architecture.md](docs/internals/architecture.md) |
+| Look up a term or find where code lives | [docs/internals/glossary.md](docs/internals/glossary.md) |
+| Tests and verification | [docs/internals/testing.md](docs/internals/testing.md) |
 
-## Rules
+## Plans and work artifacts
 
-**Always:**
+- Do not commit implementation plans, research notes, or agent scratch files. Keep temporary working material outside the worktree.
+- Put durable architecture, constraints, and decisions in `docs/project/`. Update those docs when the product changes so agents find current facts instead of abandoned intentions.
+- Nothing in `docs/internals/` should reference `docs/project/`. They are separate audiences.
 
-- Keep changes inside the active module.
-- Match naming and layout in `internal/ticket/` exactly — new domain, same shape.
-- Wire features declaratively in `<module>.go`.
+## Taste
 
-**Never:**
-
-- Add a layer not listed in Structure (no extra abstraction between usecase and repository).
-- Skip the usecase (handler/endpoint calling repository or client directly).
-- Import another module's package (`usecase`, `repository`, `model`) — use its `client` port instead.
-- Use globals or `panic()`.
-- Touch files outside the current task's domain.
+- Complexity belongs at the adapter boundary. Usecases stay pure, endpoints stay thin.
+- Inferred types over annotations. `any` is the enemy.
+- Comments describe how a thing is used, and move when the code moves. Use them mostly to describe functions, not to annotate every line of behavior.
+- If a rule here fights the task in front of you, say so loudly and get a human sign-off before breaking it.
 
 ## When in Doubt
 

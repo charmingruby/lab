@@ -2,7 +2,7 @@
 
 Implementation reference for a domain feature. Real code from `internal/ticket/`. Mirror it — do not invent new shapes.
 
-> **Module structure**: see "Structure" in `AGENTS.md`.
+> **Module structure**: see [architecture.md](./architecture.md).
 
 ## 1. Model
 
@@ -14,7 +14,9 @@ Constructor, invariants, state changes as explicit methods using `core.Model.Tou
 - ✅ Invalid state returns a package-level `var Err...`, not a string.
 - ✅ State changes are methods named as verbs (`Assign`, `Resolve`), using `Touch(func(m *core.Model))`.
 - ✅ Legitimate values are typed constants with `Valid()`.
-- ❌ Never expose raw field mutation from outside — ❌ never `ticket.Status = "open"` outside the model package.
+- ❌ Never expose raw field mutation from outside — never `ticket.Status = "open"` outside the model package.
+
+Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go)
 
 ```go
 // internal/ticket/model/ticket.go
@@ -80,6 +82,8 @@ Interface at the root: `internal/ticket/repository/repository.go`.
 - ✅ Not-found returns `(nil, nil)` — never `sql.ErrNoRows`.
 - ❌ No ORM/SQL types in the port — usecases and mocks stay transport-free.
 
+Source: [internal/ticket/repository/repository.go](../../internal/ticket/repository/repository.go)
+
 ```go
 // internal/ticket/repository/repository.go
 type TicketRepository interface {
@@ -108,6 +112,8 @@ Prepared statements via `postgrex.Querier`.
 - ✅ Not-found returns `(nil, nil)` — never surface `sql.ErrNoRows` to callers.
 - ✅ `LIMIT $2 OFFSET $3` pagination plus a separate `COUNT(*)` query.
 - ❌ No inline queries in methods — always via the prepared `statement(name)`.
+
+Source: [internal/ticket/repository/postgres/ticket_repository.go](../../internal/ticket/repository/postgres/ticket_repository.go)
 
 ```go
 // internal/ticket/repository/postgres/ticket_repository.go
@@ -146,6 +152,8 @@ One file per implemented use case; interfaces aggregated in `usecase/usecase.go`
 - ✅ Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
 - ✅ Interface stays in `usecase.go`, typed by the concrete `*usecase` constructing it.
 - ❌ No HTTP/`net/http` types in the usecase. ❌ No `*sqlx.DB` — repositories only.
+
+Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
 
 Simple case — `create_ticket.go`:
 
@@ -213,6 +221,8 @@ Parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Resp
 - ✅ Path params via `httpx.GetPathParam`.
 - ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll JSON decode/validate.
 
+Source: [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
+
 ```go
 // internal/ticket/http/endpoint/create_ticket_v1.go
 type CreateTicketV1Request struct {
@@ -255,6 +265,8 @@ Register under `/api/v1/...` (the router is mounted at `/api`; group resource ro
 - ✅ `RegisterRoutes` is passed the `*endpoint.Endpoint` built by `SetupEndpoints`.
 - ❌ No usecase calls in the router — routing only.
 
+Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
+
 ```go
 // internal/ticket/http/route.go
 func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
@@ -278,6 +290,8 @@ Composition root. Build the transaction manager, postgres repositories, usecases
 - ✅ One function `New(r chi.Router, db *sqlx.DB) error` per module.
 - ✅ Ports are implemented by postgres/console adapters; no `mockery` mocks here.
 - ❌ No wiring in endpoints/usecases — declarative, top-down.
+
+Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 ```go
 // internal/ticket/ticket.go
@@ -304,6 +318,8 @@ func New(r chi.Router, db *sqlx.DB) error {
 
 Read adapters for other domains go in `<domain>/public.go`:
 
+Source: [internal/ticket/public.go](../../internal/ticket/public.go)
+
 ```go
 // internal/ticket/public.go
 func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
@@ -322,4 +338,4 @@ func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
 
 ## Structural changes
 
-Not covered here — see "Structure" in `AGENTS.md`, [docs/versioning.md](versioning.md), and [docs/cross-module-reads.md](cross-module-reads.md). This file only covers the fixed layer order for implementing a single domain feature.
+Not covered here — see [architecture.md](./architecture.md), [versioning.md](versioning.md), and [cross-module-reads.md](cross-module-reads.md). This file only covers the fixed layer order for implementing a single domain feature.
