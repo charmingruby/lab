@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   MIGRATIONS_PATH: "db/migration"
-  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/new?sslmode=disable"
+  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/lab?sslmode=disable"
 
 tasks:
   default:
