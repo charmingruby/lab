@@ -42,3 +42,6 @@ tasks:
   build:
     desc: Builds API binary
     cmd: go build -ldflags="-s -w" -trimpath -o bin/api ./cmd/api
+  compose:
+    desc: Runs `docker compose up -d`
+    cmd: docker compose up -d
