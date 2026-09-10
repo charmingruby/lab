@@ -1,6 +1,6 @@
 services:
-  db:
-    container_name: db
+  lab-db:
+    container_name: lab-db
     image: bitnami/postgresql:latest
     environment:
       - POSTGRES_USER=postgres
