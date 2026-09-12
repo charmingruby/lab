@@ -71,9 +71,14 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 
 func writeCustomError(w http.ResponseWriter, err *customerr.Error) {
 	status := mapStatus(err.Type)
+	msg := err.Message
+
+	if err.Type == customerr.TypeIntegration {
+		msg = "Internal Server Error"
+	}
 
 	WriteResponse(w, status, ErrorResponse{
-		Message: err.Message,
+		Message: msg,
 	})
 }
 
