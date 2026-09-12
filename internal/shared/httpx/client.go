@@ -52,11 +52,11 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 }
 
 type Request struct {
+	Body           any
+	Headers        http.Header
 	Method         string
 	Path           string
-	Body           any
 	ExpectedStatus int
-	Headers        http.Header
 }
 
 func Do[T any](
@@ -101,7 +101,13 @@ func Do[T any](
 
 	if res.StatusCode != r.ExpectedStatus {
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-		return nil, fmt.Errorf("%w: got %d, want %d, body: %s", ErrUnexpectedStatusCode, res.StatusCode, r.ExpectedStatus, body)
+		return nil, fmt.Errorf(
+			"%w: got %d, want %d, body: %s",
+			ErrUnexpectedStatusCode,
+			res.StatusCode,
+			r.ExpectedStatus,
+			body,
+		)
 	}
 
 	var result T

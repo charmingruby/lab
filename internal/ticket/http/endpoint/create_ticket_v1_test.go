@@ -92,7 +92,7 @@ func TestCreateTicketV1(t *testing.T) {
 			},
 			wantStatus: http.StatusInternalServerError,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "db error", body["message"])
+				assert.Equal(t, "Internal Server Error", body["message"])
 			},
 		},
 		{
