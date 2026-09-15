@@ -18,6 +18,6 @@ RUN CGO_ENABLED=0 go build \
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=builder /app/bin /bin
+COPY --from=builder /app/bin /app/bin
 
-ENTRYPOINT ["/bin"]
+ENTRYPOINT ["/app/bin"]
