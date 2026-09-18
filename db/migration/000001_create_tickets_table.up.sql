@@ -1,10 +1,10 @@
 CREATE TABLE tickets (
-    id VARCHAR(26) PRIMARY KEY,
+    id VARCHAR PRIMARY KEY,
     title VARCHAR NOT NULL,
     description VARCHAR NOT NULL,
     status VARCHAR NOT NULL,
     priority VARCHAR NOT NULL,
-    assignee_id VARCHAR(26) DEFAULT NULL,
+    assignee_id VARCHAR DEFAULT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT NULL,
     deleted_at TIMESTAMP DEFAULT NULL
