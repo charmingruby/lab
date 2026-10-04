@@ -89,7 +89,7 @@ linters:
         linters:
           - asasalint
           - funlen
-      - path: .*\.go
+      - path: '.*\.go'
         linters:
           - govet
         text: "shadow: declaration of"
