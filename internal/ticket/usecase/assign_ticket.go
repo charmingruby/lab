@@ -7,7 +7,7 @@ import (
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/ticket/repository"
-	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/internal/platform/o11y"
 )
 
 type AssignTicketInput struct {

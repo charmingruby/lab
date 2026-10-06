@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/charmingruby/lab/internal/ticket/client"
-	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/internal/platform/o11y"
 )
 
 type Notifier struct{}

@@ -3,7 +3,7 @@
 ## Test conventions
 
 - External packages only (`endpoint_test`, `usecase_test`), table-driven, testify.
-- Mocks generated with mockery into `test/<domain>/mocks` and `test/shared/mocks`; regenerate with `task mock` and commit them.
+- Mocks generated with mockery into `test/<domain>/mocks`; regenerate with `task mock` and commit them.
 - A test that needs a `time.Sleep` to pass is wrong — it is hiding a race condition or missing synchronization.
 - Ship focused tests for the behavior you changed. Do not run repo-wide checks unless the developer asks.
 

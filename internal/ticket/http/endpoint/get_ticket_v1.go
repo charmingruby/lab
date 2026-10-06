@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/platform/httpx"
 	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )

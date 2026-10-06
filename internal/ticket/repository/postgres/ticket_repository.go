@@ -10,7 +10,7 @@ import (
 
 	"github.com/charmingruby/lab/internal/shared/core"
 	"github.com/charmingruby/lab/internal/ticket/model"
-	"github.com/charmingruby/lab/pkg/postgrex"
+	"github.com/charmingruby/lab/internal/platform/postgrex"
 )
 
 const (

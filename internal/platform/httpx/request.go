@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/charmingruby/lab/internal/shared/core"
-	"github.com/charmingruby/lab/pkg/validator"
+	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
 var (

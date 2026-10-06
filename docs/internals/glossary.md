@@ -123,9 +123,19 @@ Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr
 
 #### httpx
 
-HTTP utilities in `internal/shared/httpx/`: `ParseRequest[T]`, `WriteOKResponse`, `WriteCreatedResponse`, `WriteError`, `GetPathParam`. Endpoints use these instead of hand-rolling JSON decode/validate.
+HTTP utilities in `internal/platform/httpx/`: `ParseRequest[T]`, `WriteOKResponse`, `WriteCreatedResponse`, `WriteError`, `GetPathParam`. Endpoints use these instead of hand-rolling JSON decode/validate.
 
-Source: [internal/shared/httpx/](../../internal/shared/httpx/)
+Source: [internal/platform/httpx/](../../internal/platform/httpx/)
+
+#### platform
+
+Internal infrastructure with zero domain awareness in `internal/platform/`: `httpx`, `o11y`, `postgrex`, `validator`, plus raw external clients. Adapters in `internal/shared/client/` or a domain's `client/` wrap it.
+
+Source: [internal/platform/](../../internal/platform/)
+
+#### pkg (reserved)
+
+Reserved for code exposed to the outside world (e.g. public API contract). Absent in this repo — do not use it for internal infra.
 
 ## Practical shortcuts
 

@@ -3,8 +3,8 @@ package httpx
 import (
 	"net/http"
 
-	"github.com/charmingruby/lab/pkg/o11y"
-	"github.com/charmingruby/lab/pkg/validator"
+	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
 func withValidator(v *validator.Validator) func(next http.Handler) http.Handler {

@@ -14,7 +14,7 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/internal/platform/o11y"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 

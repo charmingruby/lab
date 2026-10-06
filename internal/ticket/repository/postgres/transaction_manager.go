@@ -4,7 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/charmingruby/lab/internal/ticket/repository"
-	"github.com/charmingruby/lab/pkg/postgrex"
+	"github.com/charmingruby/lab/internal/platform/postgrex"
 )
 
 type TransactionManager struct {

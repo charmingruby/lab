@@ -16,7 +16,7 @@ import (
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	"github.com/charmingruby/lab/pkg/o11y"
+	"github.com/charmingruby/lab/internal/platform/o11y"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 

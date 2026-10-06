@@ -3,7 +3,7 @@ package endpoint
 import (
 	"net/http"
 
-	"github.com/charmingruby/lab/internal/shared/httpx"
+	"github.com/charmingruby/lab/internal/platform/httpx"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
