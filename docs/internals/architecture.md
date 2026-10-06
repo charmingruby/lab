@@ -37,9 +37,9 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `model/` — entities, invariants, state changes
   - `repository/` — persistence port (interface), implementations in `postgres/`
   - `client/` — outbound ports (interfaces), adapters in subdirectories
-- `internal/shared/` — shared domain language: `core` (model base, pagination, transactions), `customerr` (typed errors), shared ports and adapters.
-- `internal/platform/` — internal infrastructure, zero domain awareness: `httpx` (HTTP utils), `logging` (logger), `postgrex` (DB driver), `validator` (validation). Raw external clients live here too.
-- `pkg/` — reserved for code exposed to the outside world (e.g. public API contract). Absent in this repo; do not use it for internal infra.
+- `internal/shared/` — shared domain language: domain types (e.g. base model, pagination, transactions), typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
+- `internal/platform/` — internal infrastructure with zero domain awareness: raw external clients and transport/config helpers (e.g. HTTP, logging, DB, validation). See the directory for the current set.
+- `pkg/` — reserved for code exposed to the outside world (e.g. public API contract).
 
 ## Cross-domain communication
 
@@ -96,13 +96,13 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 ### Repository and client shape
 
-`repository/` — template for any port with multiple backends: interface at the root (`repository/repository.go`), each implementation in its own subpackage (`repository/postgres/`). Same shape for `client/` (port in `client/notifier.go`, adapter in `client/console/`) and for messaging adapters inside `delivery/queue/` (`queue/kafka`, `queue/sqs`).
+`repository/` — template for any port with multiple backends: interface at the root (e.g. `repository/repository.go`), each implementation in its own subpackage (e.g. `repository/postgres/`). Same shape for `client/` (port e.g. `client/notifier.go`, adapter e.g. `client/console/`) and for messaging adapters inside `delivery/queue/` (e.g. `queue/kafka`, `queue/sqs`).
 
 ### External dependencies
 
 Storage, email, cache, third-party APIs — same shape as `client/`, raw connection in `internal/platform/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [external-integrations.md](./external-integrations.md).
 
-Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Shared domain language goes in `internal/shared` (`core`, `customerr`, `client/`). Connections and external config go in `internal/platform/` (`httpx`, `logging`, `postgrex`, `validator`).
+Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Shared domain language goes in `internal/shared/`. Connections and external config go in `internal/platform/`.
 
 ## Related
 

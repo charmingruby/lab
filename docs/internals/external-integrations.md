@@ -76,10 +76,10 @@ createReceipt := usecase.NewCreateReceiptUsecase(storage) // typed as shared cli
 
 ## `internal/platform/` — the raw client, once
 
-The actual SDK call goes through one `internal/platform/` wrapper, built once and passed down:
+The actual SDK call goes through one `internal/platform/<provider>/` wrapper (illustrative — see the directory for the current set), built once and passed down:
 
 ```go
-// internal/platform/s3/s3.go
+// internal/platform/<provider>/<provider>.go — illustrative, not current inventory
 type Client struct {
 	sdk *awss3.Client
 }

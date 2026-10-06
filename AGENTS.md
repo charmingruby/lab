@@ -16,7 +16,7 @@ Use the terminology defined in [docs/internals/glossary.md](docs/internals/gloss
 
 1. **Never skip the usecase.** The usecase owns business validation, transaction boundaries, and error mapping. Skipping it means scattered logic, no transaction safety, and tests that cannot isolate behavior.
 2. **Never import another domain's internals.** Use its `client` port instead. Cross-module imports create invisible coupling and make it impossible to change one domain without breaking another.
-3. **Never add layers that do not exist.** The pattern has exactly four layers — protocol, usecase, port (repository/client), adapter (postgres/console). Extra layers do not add safety; they add surface area for bugs.
+3. **Never add layers that do not exist.** The pattern has exactly four layers — protocol, usecase, port (repository/client), adapter (e.g. postgres, console). Extra layers do not add safety; they add surface area for bugs.
 
 See [docs/internals/architecture.md](docs/internals/architecture.md) for delivery mechanisms, module boundaries, repositories, clients, and external integrations.
 
@@ -30,7 +30,7 @@ Domains use ports and adapters:
                      model
 ```
 
-Each domain lives under `internal/<domain>/`. Shared domain language lives in `internal/shared/` (`core`, `customerr`, `client/` ports + adapters). Internal infrastructure lives in `internal/platform/` (`httpx`, `logging`, `postgrex`, `validator`, raw external clients) — zero domain awareness. `pkg/` is reserved for code exposed to the outside world (e.g. public API contract) and does not exist in this repo.
+Each domain lives under `internal/<domain>/`. Shared domain language lives in `internal/shared/` (domain types and ports + adapters used by two or more domains — see the directory for the current set). Internal infrastructure lives in `internal/platform/` (raw clients and transport/config helpers with zero domain awareness — see the directory for the current set). `pkg/` is reserved for code exposed to the outside world (e.g. public API contract).
 
 ## Development
 

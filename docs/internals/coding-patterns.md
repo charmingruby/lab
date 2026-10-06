@@ -1,6 +1,6 @@
 # Coding Patterns
 
-Implementation reference for a domain feature. Real code from `internal/ticket/`. Mirror it — do not invent new shapes.
+Implementation reference for a domain feature. `internal/ticket/` is one illustration of the pattern — mirror its shape for any `<domain>`, do not invent new shapes.
 
 > **Module structure**: see [architecture.md](./architecture.md).
 

@@ -8,7 +8,7 @@ A module never imports another module's use case. To read another module's data,
 
 The consumer codes only against the produced `client` port. Mocks are generated from it into `test/<domain>/mocks`.
 
-## Example — `ticket` exposes `TicketReader`
+## Example — `ticket` exposes `TicketReader` (illustration — same shape for any `<domain>`)
 
 **1. The port** — [internal/ticket/client/notifier.go](../../internal/ticket/client/notifier.go):
 

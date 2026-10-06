@@ -19,7 +19,7 @@ Source: [architecture.md](./architecture.md), [internal/ticket/](../../internal/
 
 #### Model
 
-The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Models use `core.Model` for base fields (ID, timestamps) and `core.Model.Touch` for state mutations. Constructors return `(*Model, error)` when there are invariants to enforce.
+The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Models build on the shared base model (currently `core.Model`) for base fields (ID, timestamps) and state-mutation helpers (currently `core.Model.Touch`). Constructors return `(*Model, error)` when there are invariants to enforce.
 
 Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go), [internal/shared/core/model.go](../../internal/shared/core/model.go)
 
@@ -49,7 +49,7 @@ Source: [internal/ticket/repository/postgres/](../../internal/ticket/repository/
 
 #### Endpoint
 
-The HTTP handler that parses a request (via `httpx.ParseRequest`), calls a usecase, and writes a response (via `httpx.Write*Response`). One DTO per endpoint with `validate:` tags. Endpoints never contain business logic.
+The HTTP handler that parses a request (via the shared HTTP helpers, currently `httpx.ParseRequest`), calls a usecase, and writes a response (via the shared HTTP writers, currently `httpx.Write*Response`). One DTO per endpoint with `validate:` tags. Endpoints never contain business logic.
 
 Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/)
 
@@ -103,33 +103,21 @@ Source: [architecture.md](./architecture.md)
 
 #### Transaction manager
 
-Wraps `postgrex.RunInTx` for multi-repo writes. Typed as `core.TransactionManager[repository.Transaction]`. The `Transaction` struct holds the repo interfaces needed inside the transaction.
+Wraps the shared DB helper (currently `postgrex.RunInTx`) for multi-repo writes. Typed as the shared transaction manager (currently `core.TransactionManager[repository.Transaction]`). The `Transaction` struct holds the repo interfaces needed inside the transaction.
 
 Source: [internal/shared/core/transaction.go](../../internal/shared/core/transaction.go), [internal/ticket/repository/postgres/transaction_manager.go](../../internal/ticket/repository/postgres/transaction_manager.go)
 
 ## Cross-cutting
 
-#### core
+#### shared
 
-Shared base utilities in `internal/shared/core/`: `Model` (base entity with ID and timestamps), `PaginationParams`, `TransactionManager`. Every domain depends on `core`.
+Shared domain language in `internal/shared/`: domain types, typed errors, and ports + adapters used by two or more domains. Usual members are a base model with ID/timestamps, pagination params, a transaction manager type, and typed errors mapping domain outcomes to HTTP status (`NotFound` → 404, `Conflict` → 409, `Validation` → 422, `Integration` → 500). See the directory for the current set — do not treat this doc as inventory.
 
-Source: [internal/shared/core/](../../internal/shared/core/)
-
-#### customerr
-
-Typed error package in `internal/shared/customerr/`. Maps domain outcomes to HTTP status codes: `NotFound` → 404, `Conflict` → 409, `Validation` → 422, `Integration` → 500. Usecases wrap infra failures as `customerr.Integration(err)`.
-
-Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr/customerr.go)
-
-#### httpx
-
-HTTP utilities in `internal/platform/httpx/`: `ParseRequest[T]`, `WriteOKResponse`, `WriteCreatedResponse`, `WriteError`, `GetPathParam`. Endpoints use these instead of hand-rolling JSON decode/validate.
-
-Source: [internal/platform/httpx/](../../internal/platform/httpx/)
+Source: [internal/shared/](../../internal/shared/)
 
 #### platform
 
-Internal infrastructure with zero domain awareness in `internal/platform/`: `httpx`, `logging`, `postgrex`, `validator`, plus raw external clients. Adapters in `internal/shared/client/` or a domain's `client/` wrap it.
+Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers (e.g. HTTP, logging, DB, validation). Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set.
 
 Source: [internal/platform/](../../internal/platform/)
 
