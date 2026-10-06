@@ -52,7 +52,11 @@ func (s *Server) Close(ctx context.Context) error {
 }
 
 func registerProbes(r chi.Router) {
-	r.Get("/health-check", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 }
