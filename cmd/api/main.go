@@ -14,7 +14,7 @@ import (
 	"github.com/charmingruby/lab/config"
 	"github.com/charmingruby/lab/internal/platform/httpx"
 	"github.com/charmingruby/lab/internal/ticket"
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/platform/postgrex"
 	"github.com/charmingruby/lab/internal/platform/validator"
 )
@@ -36,7 +36,7 @@ func run() error {
 	)
 	defer stop()
 
-	log := o11y.InitLogger()
+	log := logging.InitLogger()
 
 	cfg, err := config.Load()
 	if err != nil {

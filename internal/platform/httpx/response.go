@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/charmingruby/lab/internal/shared/customerr"
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 )
 
 type ErrorResponse struct {
@@ -44,7 +44,7 @@ func WriteResponse(w http.ResponseWriter, status int, v any) {
 }
 
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
-	log := o11y.LoggerFromContext(r.Context())
+	log := logging.LoggerFromContext(r.Context())
 
 	if customErr, ok := errors.AsType[*customerr.Error](err); ok {
 		var originalErrMsg string

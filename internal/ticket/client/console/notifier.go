@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/charmingruby/lab/internal/ticket/client"
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 )
 
 type Notifier struct{}
@@ -14,7 +14,7 @@ func NewNotifier() *Notifier {
 }
 
 func (n *Notifier) Send(ctx context.Context, input client.SendNotificationInput) error {
-	o11y.LoggerFromContext(ctx).Info("notification sent",
+	logging.LoggerFromContext(ctx).Info("notification sent",
 		"assignee_id", input.AssigneeID,
 		"message", input.Message,
 	)

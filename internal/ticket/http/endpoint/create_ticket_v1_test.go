@@ -16,12 +16,12 @@ import (
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestMain(m *testing.M) {
-	o11y.InitLogger()
+	logging.InitLogger()
 	os.Exit(m.Run())
 }
 

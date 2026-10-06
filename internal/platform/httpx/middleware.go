@@ -3,7 +3,7 @@ package httpx
 import (
 	"net/http"
 
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
@@ -16,14 +16,14 @@ func withValidator(v *validator.Validator) func(next http.Handler) http.Handler 
 	}
 }
 
-func withO11y(next http.Handler) http.Handler {
+func withLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := o11y.Log.With(
+		log := logging.Log.With(
 			"path", r.URL.Path,
 			"method", r.Method,
 		)
 
-		ctx := o11y.WithLogger(r.Context(), log)
+		ctx := logging.WithLogger(r.Context(), log)
 
 		log.InfoContext(ctx, "request started")
 		defer log.InfoContext(ctx, "request finished")

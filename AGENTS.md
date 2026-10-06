@@ -30,7 +30,7 @@ Domains use ports and adapters:
                      model
 ```
 
-Each domain lives under `internal/<domain>/`. Shared domain language lives in `internal/shared/` (`core`, `customerr`, `client/` ports + adapters). Internal infrastructure lives in `internal/platform/` (`httpx`, `o11y`, `postgrex`, `validator`, raw external clients) — zero domain awareness. `pkg/` is reserved for code exposed to the outside world (e.g. public API contract) and does not exist in this repo.
+Each domain lives under `internal/<domain>/`. Shared domain language lives in `internal/shared/` (`core`, `customerr`, `client/` ports + adapters). Internal infrastructure lives in `internal/platform/` (`httpx`, `logging`, `postgrex`, `validator`, raw external clients) — zero domain awareness. `pkg/` is reserved for code exposed to the outside world (e.g. public API contract) and does not exist in this repo.
 
 ## Development
 

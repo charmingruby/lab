@@ -19,7 +19,7 @@ func NewServer(port string, validator *validator.Validator) (*Server, chi.Router
 	addr := ":" + port
 
 	r := chi.NewRouter()
-	r.Use(withValidator(validator), withO11y)
+	r.Use(withValidator(validator), withLogging)
 
 	var apiRouter chi.Router
 	r.Route("/api", func(router chi.Router) {

@@ -7,7 +7,7 @@ import (
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/ticket/repository"
-	"github.com/charmingruby/lab/internal/platform/o11y"
+	"github.com/charmingruby/lab/internal/platform/logging"
 )
 
 type AssignTicketInput struct {
@@ -66,7 +66,7 @@ func (u *assignTicketUsecase) AssignTicket(
 		AssigneeID: assigneeID,
 		Message:    "you have been assigned to a ticket",
 	}); err != nil {
-		o11y.LoggerFromContext(ctx).Warn("notification send failed", "error", err)
+		logging.LoggerFromContext(ctx).Warn("notification send failed", "error", err)
 	}
 
 	return nil

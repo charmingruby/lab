@@ -129,7 +129,7 @@ Source: [internal/platform/httpx/](../../internal/platform/httpx/)
 
 #### platform
 
-Internal infrastructure with zero domain awareness in `internal/platform/`: `httpx`, `o11y`, `postgrex`, `validator`, plus raw external clients. Adapters in `internal/shared/client/` or a domain's `client/` wrap it.
+Internal infrastructure with zero domain awareness in `internal/platform/`: `httpx`, `logging`, `postgrex`, `validator`, plus raw external clients. Adapters in `internal/shared/client/` or a domain's `client/` wrap it.
 
 Source: [internal/platform/](../../internal/platform/)
 

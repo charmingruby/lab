@@ -38,7 +38,7 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `repository/` — persistence port (interface), implementations in `postgres/`
   - `client/` — outbound ports (interfaces), adapters in subdirectories
 - `internal/shared/` — shared domain language: `core` (model base, pagination, transactions), `customerr` (typed errors), shared ports and adapters.
-- `internal/platform/` — internal infrastructure, zero domain awareness: `httpx` (HTTP utils), `o11y` (logger), `postgrex` (DB driver), `validator` (validation). Raw external clients live here too.
+- `internal/platform/` — internal infrastructure, zero domain awareness: `httpx` (HTTP utils), `logging` (logger), `postgrex` (DB driver), `validator` (validation). Raw external clients live here too.
 - `pkg/` — reserved for code exposed to the outside world (e.g. public API contract). Absent in this repo; do not use it for internal infra.
 
 ## Cross-domain communication
@@ -102,7 +102,7 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 Storage, email, cache, third-party APIs — same shape as `client/`, raw connection in `internal/platform/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [external-integrations.md](./external-integrations.md).
 
-Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Shared domain language goes in `internal/shared` (`core`, `customerr`, `client/`). Connections and external config go in `internal/platform/` (`httpx`, `o11y`, `postgrex`, `validator`).
+Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Shared domain language goes in `internal/shared` (`core`, `customerr`, `client/`). Connections and external config go in `internal/platform/` (`httpx`, `logging`, `postgrex`, `validator`).
 
 ## Related
 

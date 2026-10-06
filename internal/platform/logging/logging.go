@@ -1,4 +1,4 @@
-package o11y
+package logging
 
 import (
 	"context"
