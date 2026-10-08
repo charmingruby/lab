@@ -142,7 +142,7 @@ func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Tick
 
 ## 4. usecase
 
-One file per implemented use case; interfaces aggregated in `usecase/usecase.go` (what mockery mocks).
+One file per implemented use case; single `Usecase` interface plus `Service` struct in `usecase/usecase.go` (what mockery mocks).
 
 **Rules:**
 
@@ -150,7 +150,7 @@ One file per implemented use case; interfaces aggregated in `usecase/usecase.go`
 - ✅ Infra failures wrap as `customerr.Integration(err)`.
 - ✅ Domain outcomes map: missing → `customerr.NotFound`, duplicate → `customerr.Conflict`, invalid → `customerr.Validation`.
 - ✅ Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
-- ✅ Interface stays in `usecase.go`, typed by the concrete `*usecase` constructing it.
+- ✅ Contract is the `Usecase` interface in `usecase.go`, implemented by `*Service` built with `New(...)`.
 - ❌ No HTTP/`net/http` types in the usecase. ❌ No `*sqlx.DB` — repositories only.
 
 Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
@@ -158,7 +158,7 @@ Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ti
 Simple case — `create_ticket.go`:
 
 ```go
-func (u *createTicketUsecase) CreateTicket(
+func (u *Service) CreateTicket(
 	ctx context.Context,
 	input CreateTicketInput,
 ) (CreateTicketOutput, error) {
@@ -178,7 +178,7 @@ func (u *createTicketUsecase) CreateTicket(
 Transactional case — `assign_ticket.go`:
 
 ```go
-func (u *assignTicketUsecase) AssignTicket(
+func (u *Service) AssignTicket(
 	ctx context.Context,
 	input AssignTicketInput,
 ) error {
@@ -239,7 +239,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := e.createTicket.CreateTicket(ctx, usecase.CreateTicketInput{
+	output, err := e.uc.CreateTicket(ctx, usecase.CreateTicketInput{
 		Title:       request.Title,
 		Description: request.Description,
 		Priority:    request.Priority,
@@ -304,10 +304,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 	}
 
 	ep := http.SetupEndpoints(
-		usecase.NewCreateTicketUsecase(ticketRepo),
-		usecase.NewAssignTicketUsecase(txManager, console.NewNotifier()),
-		usecase.NewGetTicketUsecase(ticketRepo),
-		usecase.NewListTicketsUsecase(ticketRepo),
+		usecase.New(ticketRepo, txManager, console.NewNotifier()),
 	)
 
 	http.RegisterRoutes(r, ep)
@@ -328,9 +325,9 @@ func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
 		return nil, err
 	}
 
-	getTicketUc := usecase.NewGetTicketUsecase(ticketRepo)
+	uc := usecase.New(ticketRepo, postgres.NewTransactionManager(db), console.NewNotifier())
 
-	return public.NewTicketReader(getTicketUc), nil
+	return public.NewTicketReader(uc), nil
 }
 ```
 

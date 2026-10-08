@@ -21,7 +21,7 @@ tasks:
     cmd: migrate -path {{.MIGRATIONS_PATH}} -database "{{.DATABASE_URL}}" down
   new-mig:
     desc: Creates a new migration
-    cmd: migrate create -ext sql -dir {{.MIGRATIONS_PATH}} -seq {{.NAME}}
+    cmd: migrate create -ext sql -dir {{.MIGRATIONS_PATH}} -seq {{.name}}
   lint:
     desc: Runs linter
     cmds:

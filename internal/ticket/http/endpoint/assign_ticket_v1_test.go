@@ -22,7 +22,7 @@ import (
 func TestAssignTicketV1(t *testing.T) {
 	tests := []struct {
 		body          any
-		mockSetup     func(uc *mocks.MockAssignTicketUsecase)
+		mockSetup     func(uc *mocks.MockUsecase)
 		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		ticketID      string
@@ -32,7 +32,7 @@ func TestAssignTicketV1(t *testing.T) {
 			name:       "invalid JSON body returns 400",
 			ticketID:   "ticket-123",
 			body:       "not json",
-			mockSetup:  func(uc *mocks.MockAssignTicketUsecase) {},
+			mockSetup:  func(uc *mocks.MockUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -42,7 +42,7 @@ func TestAssignTicketV1(t *testing.T) {
 			name:       "missing assignee_id returns 400",
 			ticketID:   "ticket-123",
 			body:       map[string]string{},
-			mockSetup:  func(uc *mocks.MockAssignTicketUsecase) {},
+			mockSetup:  func(uc *mocks.MockUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -54,7 +54,7 @@ func TestAssignTicketV1(t *testing.T) {
 			body: map[string]string{
 				"assignee_id": "user-456",
 			},
-			mockSetup: func(uc *mocks.MockAssignTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					AssignTicket(mock.Anything, usecase.AssignTicketInput{
 						TicketID:   "nonexistent",
@@ -73,7 +73,7 @@ func TestAssignTicketV1(t *testing.T) {
 			body: map[string]string{
 				"assignee_id": "user-456",
 			},
-			mockSetup: func(uc *mocks.MockAssignTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					AssignTicket(mock.Anything, usecase.AssignTicketInput{
 						TicketID:   "ticket-123",
@@ -92,7 +92,7 @@ func TestAssignTicketV1(t *testing.T) {
 			body: map[string]string{
 				"assignee_id": "user-456",
 			},
-			mockSetup: func(uc *mocks.MockAssignTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					AssignTicket(mock.Anything, usecase.AssignTicketInput{
 						TicketID:   "ticket-123",
@@ -109,10 +109,10 @@ func TestAssignTicketV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockAssignTicketUsecase(t)
+			uc := mocks.NewMockUsecase(t)
 			tt.mockSetup(uc)
 
-			ep := endpoint.New(nil, uc, nil, nil)
+			ep := endpoint.New(uc)
 
 			var reqBody *bytes.Buffer
 			switch v := tt.body.(type) {

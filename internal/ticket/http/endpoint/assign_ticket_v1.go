@@ -25,7 +25,7 @@ func (e *Endpoint) AssignTicketV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.assignTicket.AssignTicket(ctx, usecase.AssignTicketInput{
+	err = e.uc.AssignTicket(ctx, usecase.AssignTicketInput{
 		TicketID:   ticketID,
 		AssigneeID: request.AssigneeID,
 	})

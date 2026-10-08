@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestCreateTicketV1(t *testing.T) {
 	tests := []struct {
 		body          any
-		mockSetup     func(uc *mocks.MockCreateTicketUsecase)
+		mockSetup     func(uc *mocks.MockUsecase)
 		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		wantStatus    int
@@ -36,7 +36,7 @@ func TestCreateTicketV1(t *testing.T) {
 		{
 			name:       "invalid JSON body returns 400",
 			body:       "not json",
-			mockSetup:  func(uc *mocks.MockCreateTicketUsecase) {},
+			mockSetup:  func(uc *mocks.MockUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -47,7 +47,7 @@ func TestCreateTicketV1(t *testing.T) {
 			body: map[string]string{
 				"title": "Test Ticket",
 			},
-			mockSetup:  func(uc *mocks.MockCreateTicketUsecase) {},
+			mockSetup:  func(uc *mocks.MockUsecase) {},
 			wantStatus: http.StatusBadRequest,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Contains(t, body["message"], "invalid payload")
@@ -60,7 +60,7 @@ func TestCreateTicketV1(t *testing.T) {
 				"description": "A description",
 				"priority":    "invalid",
 			},
-			mockSetup: func(uc *mocks.MockCreateTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					CreateTicket(mock.Anything, usecase.CreateTicketInput{
 						Title:       "Test Ticket",
@@ -81,7 +81,7 @@ func TestCreateTicketV1(t *testing.T) {
 				"description": "A description",
 				"priority":    "low",
 			},
-			mockSetup: func(uc *mocks.MockCreateTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					CreateTicket(mock.Anything, usecase.CreateTicketInput{
 						Title:       "Test Ticket",
@@ -102,7 +102,7 @@ func TestCreateTicketV1(t *testing.T) {
 				"description": "A description",
 				"priority":    "high",
 			},
-			mockSetup: func(uc *mocks.MockCreateTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					CreateTicket(mock.Anything, usecase.CreateTicketInput{
 						Title:       "Test Ticket",
@@ -120,10 +120,10 @@ func TestCreateTicketV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockCreateTicketUsecase(t)
+			uc := mocks.NewMockUsecase(t)
 			tt.mockSetup(uc)
 
-			ep := endpoint.New(uc, nil, nil, nil)
+			ep := endpoint.New(uc)
 
 			var reqBody *bytes.Buffer
 			switch v := tt.body.(type) {

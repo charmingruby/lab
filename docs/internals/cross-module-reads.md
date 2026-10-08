@@ -22,15 +22,15 @@ type TicketReader interface {
 
 ```go
 type TicketReader struct {
-	getTicket usecase.GetTicketUsecase
+	uc usecase.Usecase
 }
 
-func NewTicketReader(getTicket usecase.GetTicketUsecase) *TicketReader {
-	return &TicketReader{getTicket: getTicket}
+func NewTicketReader(uc usecase.Usecase) *TicketReader {
+	return &TicketReader{uc: uc}
 }
 
 func (r *TicketReader) GetTicketStatus(ctx context.Context, ticketID string) (string, error) {
-	t, err := r.getTicket.GetTicket(ctx, usecase.GetTicketInput{TicketID: ticketID})
+	t, err := r.uc.GetTicket(ctx, usecase.GetTicketInput{TicketID: ticketID})
 	if err != nil {
 		return "", err
 	}
@@ -48,9 +48,9 @@ func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
 		return nil, err
 	}
 
-	getTicketUc := usecase.NewGetTicketUsecase(ticketRepo)
+	uc := usecase.New(ticketRepo, postgres.NewTransactionManager(db), console.NewNotifier())
 
-	return public.NewTicketReader(getTicketUc), nil
+	return public.NewTicketReader(uc), nil
 }
 ```
 

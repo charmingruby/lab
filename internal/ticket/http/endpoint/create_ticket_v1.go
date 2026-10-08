@@ -25,7 +25,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := e.createTicket.CreateTicket(ctx, usecase.CreateTicketInput{
+	output, err := e.uc.CreateTicket(ctx, usecase.CreateTicketInput{
 		Title:       request.Title,
 		Description: request.Description,
 		Priority:    request.Priority,

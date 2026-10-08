@@ -71,7 +71,7 @@ Every consuming domain imports the port from `internal/shared/client/storage`, a
 ```go
 // internal/ticket/ticket.go
 storage := s3.New(s3.NewClient(cfg))
-createReceipt := usecase.NewCreateReceiptUsecase(storage) // typed as shared client.Storage
+createReceipt := usecase.New(storage, txManager, notifier) // storage typed as shared client.Storage
 ```
 
 ## `internal/platform/` — the raw client, once

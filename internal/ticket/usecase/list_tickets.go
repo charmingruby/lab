@@ -6,7 +6,6 @@ import (
 	"github.com/charmingruby/lab/internal/shared/core"
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/model"
-	"github.com/charmingruby/lab/internal/ticket/repository"
 )
 
 type ListTicketsInput struct {
@@ -22,17 +21,7 @@ type ListTicketsOutput struct {
 	TotalPages int
 }
 
-type listTicketsUsecase struct {
-	ticketRepo repository.TicketRepository
-}
-
-func NewListTicketsUsecase(ticketRepo repository.TicketRepository) *listTicketsUsecase {
-	return &listTicketsUsecase{
-		ticketRepo: ticketRepo,
-	}
-}
-
-func (u *listTicketsUsecase) ListTickets(ctx context.Context, input ListTicketsInput) (ListTicketsOutput, error) {
+func (u *Service) ListTickets(ctx context.Context, input ListTicketsInput) (ListTicketsOutput, error) {
 	params := input.Params.Validate()
 
 	tickets, total, err := u.ticketRepo.ListByStatus(ctx, input.Status, params)

@@ -69,7 +69,7 @@ func TestCreateTicket(t *testing.T) {
 			repo := mocks.NewMockTicketRepository(t)
 			tt.mockSetup(repo)
 
-			uc := usecase.NewCreateTicketUsecase(repo)
+			uc := usecase.New(repo, nil, nil)
 
 			got, err := uc.CreateTicket(context.Background(), tt.input)
 

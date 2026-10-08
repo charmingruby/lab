@@ -7,15 +7,15 @@ import (
 )
 
 type TicketReader struct {
-	getTicket usecase.GetTicketUsecase
+	uc usecase.Usecase
 }
 
-func NewTicketReader(getTicket usecase.GetTicketUsecase) *TicketReader {
-	return &TicketReader{getTicket: getTicket}
+func NewTicketReader(uc usecase.Usecase) *TicketReader {
+	return &TicketReader{uc: uc}
 }
 
 func (r *TicketReader) GetTicketStatus(ctx context.Context, ticketID string) (string, error) {
-	t, err := r.getTicket.GetTicket(ctx, usecase.GetTicketInput{
+	t, err := r.uc.GetTicket(ctx, usecase.GetTicketInput{
 		TicketID: ticketID,
 	})
 	if err != nil {

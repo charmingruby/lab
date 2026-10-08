@@ -40,7 +40,7 @@ func (e *Endpoint) GetTicketV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := e.getTicket.GetTicket(ctx, usecase.GetTicketInput{
+	ticket, err := e.uc.GetTicket(ctx, usecase.GetTicketInput{
 		TicketID: ticketID,
 	})
 	if err != nil {

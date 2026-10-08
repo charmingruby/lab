@@ -26,7 +26,7 @@ func (e *Endpoint) ListTicketsV1(w http.ResponseWriter, r *http.Request) {
 
 	params := httpx.GetPaginationParams(r)
 
-	output, err := e.listTickets.ListTickets(ctx, usecase.ListTicketsInput{
+	output, err := e.uc.ListTickets(ctx, usecase.ListTicketsInput{
 		Status: status,
 		Params: params,
 	})

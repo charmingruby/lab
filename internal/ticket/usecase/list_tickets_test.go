@@ -96,7 +96,7 @@ func TestListTickets(t *testing.T) {
 			repo := mocks.NewMockTicketRepository(t)
 			tt.mockSetup(repo)
 
-			uc := usecase.NewListTicketsUsecase(repo)
+			uc := usecase.New(repo, nil, nil)
 
 			got, err := uc.ListTickets(context.Background(), tt.input)
 

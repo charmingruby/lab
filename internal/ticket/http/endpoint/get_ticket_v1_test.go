@@ -37,7 +37,7 @@ func TestGetTicketV1(t *testing.T) {
 	}
 
 	tests := []struct {
-		mockSetup     func(uc *mocks.MockGetTicketUsecase)
+		mockSetup     func(uc *mocks.MockUsecase)
 		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		ticketID      string
@@ -46,7 +46,7 @@ func TestGetTicketV1(t *testing.T) {
 		{
 			name:     "ticket not found returns 404",
 			ticketID: "nonexistent",
-			mockSetup: func(uc *mocks.MockGetTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "nonexistent"}).
 					Return(nil, customerr.NotFound("ticket not found"))
@@ -59,7 +59,7 @@ func TestGetTicketV1(t *testing.T) {
 		{
 			name:     "integration error returns 500",
 			ticketID: "ticket-123",
-			mockSetup: func(uc *mocks.MockGetTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "ticket-123"}).
 					Return(nil, customerr.Integration(errors.New("db error")))
@@ -72,7 +72,7 @@ func TestGetTicketV1(t *testing.T) {
 		{
 			name:     "success returns ticket",
 			ticketID: "ticket-123",
-			mockSetup: func(uc *mocks.MockGetTicketUsecase) {
+			mockSetup: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "ticket-123"}).
 					Return(makeTicket(), nil)
@@ -91,10 +91,10 @@ func TestGetTicketV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockGetTicketUsecase(t)
+			uc := mocks.NewMockUsecase(t)
 			tt.mockSetup(uc)
 
-			ep := endpoint.New(nil, nil, uc, nil)
+			ep := endpoint.New(uc)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/tickets/"+tt.ticketID, nil)
 

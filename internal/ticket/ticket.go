@@ -21,12 +21,9 @@ func New(
 		return err
 	}
 
-	ep := http.SetupEndpoints(
-		usecase.NewCreateTicketUsecase(ticketRepo),
-		usecase.NewAssignTicketUsecase(txManager, console.NewNotifier()),
-		usecase.NewGetTicketUsecase(ticketRepo),
-		usecase.NewListTicketsUsecase(ticketRepo),
-	)
+	uc := usecase.New(ticketRepo, txManager, console.NewNotifier())
+
+	ep := http.SetupEndpoints(uc)
 
 	http.RegisterRoutes(
 		r, ep,

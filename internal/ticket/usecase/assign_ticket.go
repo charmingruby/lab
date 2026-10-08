@@ -3,11 +3,10 @@ package usecase
 import (
 	"context"
 
-	"github.com/charmingruby/lab/internal/shared/core"
+	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/ticket/repository"
-	"github.com/charmingruby/lab/internal/platform/logging"
 )
 
 type AssignTicketInput struct {
@@ -15,22 +14,7 @@ type AssignTicketInput struct {
 	AssigneeID string
 }
 
-type assignTicketUsecase struct {
-	txManager core.TransactionManager[repository.Transaction]
-	notifier  client.NotificationClient
-}
-
-func NewAssignTicketUsecase(
-	txManager core.TransactionManager[repository.Transaction],
-	notifier client.NotificationClient,
-) *assignTicketUsecase {
-	return &assignTicketUsecase{
-		txManager: txManager,
-		notifier:  notifier,
-	}
-}
-
-func (u *assignTicketUsecase) AssignTicket(
+func (u *Service) AssignTicket(
 	ctx context.Context,
 	input AssignTicketInput,
 ) error {

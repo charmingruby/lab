@@ -42,7 +42,7 @@ func TestListTicketsV1(t *testing.T) {
 	tickets[1].CreatedAt = now
 
 	tests := []struct {
-		setupMock     func(uc *mocks.MockListTicketsUsecase)
+		setupMock     func(uc *mocks.MockUsecase)
 		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
 		queryParams   string
@@ -51,7 +51,7 @@ func TestListTicketsV1(t *testing.T) {
 		{
 			name:        "missing status query param returns 500",
 			queryParams: "",
-			setupMock:   func(uc *mocks.MockListTicketsUsecase) {},
+			setupMock:   func(uc *mocks.MockUsecase) {},
 			wantStatus:  http.StatusInternalServerError,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Equal(t, "Internal Server Error", body["message"])
@@ -60,7 +60,7 @@ func TestListTicketsV1(t *testing.T) {
 		{
 			name:        "integration error returns 500",
 			queryParams: "?status=open&page=1&limit=25",
-			setupMock: func(uc *mocks.MockListTicketsUsecase) {
+			setupMock: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					ListTickets(mock.Anything, usecase.ListTicketsInput{
 						Status: "open",
@@ -76,7 +76,7 @@ func TestListTicketsV1(t *testing.T) {
 		{
 			name:        "success returns tickets list",
 			queryParams: "?status=open&page=1&limit=25",
-			setupMock: func(uc *mocks.MockListTicketsUsecase) {
+			setupMock: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					ListTickets(mock.Anything, usecase.ListTicketsInput{
 						Status: "open",
@@ -112,7 +112,7 @@ func TestListTicketsV1(t *testing.T) {
 		{
 			name:        "empty result returns empty list",
 			queryParams: "?status=resolved&page=1&limit=25",
-			setupMock: func(uc *mocks.MockListTicketsUsecase) {
+			setupMock: func(uc *mocks.MockUsecase) {
 				uc.EXPECT().
 					ListTickets(mock.Anything, usecase.ListTicketsInput{
 						Status: "resolved",
@@ -139,10 +139,10 @@ func TestListTicketsV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockListTicketsUsecase(t)
+			uc := mocks.NewMockUsecase(t)
 			tt.setupMock(uc)
 
-			ep := endpoint.New(nil, nil, nil, uc)
+			ep := endpoint.New(uc)
 
 			url := "/v1/tickets" + tt.queryParams
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)

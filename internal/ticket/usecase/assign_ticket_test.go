@@ -204,7 +204,7 @@ func TestAssignTicket(t *testing.T) {
 			txMgr := tt.setupMock(t)
 			notifier := tt.notifier(t)
 
-			uc := usecase.NewAssignTicketUsecase(txMgr, notifier)
+			uc := usecase.New(nil, txMgr, notifier)
 
 			err := uc.AssignTicket(context.Background(), tt.input)
 

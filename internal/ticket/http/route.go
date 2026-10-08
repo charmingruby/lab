@@ -7,18 +7,8 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
-func SetupEndpoints(
-	createTicket usecase.CreateTicketUsecase,
-	assignTicket usecase.AssignTicketUsecase,
-	getTicket usecase.GetTicketUsecase,
-	listTickets usecase.ListTicketsUsecase,
-) *endpoint.Endpoint {
-	return endpoint.New(
-		createTicket,
-		assignTicket,
-		getTicket,
-		listTickets,
-	)
+func SetupEndpoints(uc usecase.Usecase) *endpoint.Endpoint {
+	return endpoint.New(uc)
 }
 
 func RegisterRoutes(

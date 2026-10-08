@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/model"
-	"github.com/charmingruby/lab/internal/ticket/repository"
 )
 
 type CreateTicketInput = model.TicketInput
@@ -14,17 +13,7 @@ type CreateTicketOutput struct {
 	ID string
 }
 
-type createTicketUsecase struct {
-	ticketRepo repository.TicketRepository
-}
-
-func NewCreateTicketUsecase(ticketRepo repository.TicketRepository) *createTicketUsecase {
-	return &createTicketUsecase{
-		ticketRepo: ticketRepo,
-	}
-}
-
-func (u *createTicketUsecase) CreateTicket(
+func (u *Service) CreateTicket(
 	ctx context.Context,
 	input CreateTicketInput,
 ) (CreateTicketOutput, error) {
