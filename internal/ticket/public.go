@@ -9,7 +9,7 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
-func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
+func NewTicketReader(db *sqlx.DB) (public.Reader, error) {
 	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return nil, err

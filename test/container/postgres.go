@@ -1,14 +1,3 @@
-// Package container spins real infrastructure for integration tests.
-// Golden sources (postgres) always run as containers — no mocks, no fakes.
-//
-//	t.Run("creates and reads back", func(t *testing.T) {
-//		db := container.StartPostgres(t)
-//		repo, err := repository.NewTicketRepository(db)
-//		...
-//	})
-//
-// Migrations in db/migration run automatically. Set TEST_DATABASE_URL to
-// reuse an external postgres (e.g. CI without docker) instead of a container.
 package container
 
 import (

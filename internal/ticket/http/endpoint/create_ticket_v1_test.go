@@ -1,9 +1,12 @@
 package endpoint_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,7 +72,32 @@ func TestCreateTicketV1(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ep, uc := newTestEndpoint(t)
 
-			rec := serve(t, ep.CreateTicketV1, http.MethodPost, "/v1/tickets", mustBody(t, tt.body))
+			var bodyBytes []byte
+			if tt.body != nil {
+				if s, ok := tt.body.(string); ok {
+					bodyBytes = []byte(s)
+				} else {
+					var err error
+					bodyBytes, err = json.Marshal(tt.body)
+					require.NoError(t, err)
+				}
+			}
+
+			var reader io.Reader
+			if bodyBytes != nil {
+				reader = bytes.NewReader(bodyBytes)
+			}
+
+			req := httptest.NewRequestWithContext(
+				context.Background(),
+				http.MethodPost,
+				"/v1/tickets",
+				reader,
+			)
+			req.Header.Set("Content-Type", "application/json")
+
+			rec := httptest.NewRecorder()
+			ep.CreateTicketV1(rec, req)
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 

@@ -1,11 +1,15 @@
 package endpoint_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -80,9 +84,40 @@ func TestAssignTicketV1(t *testing.T) {
 				ticketID = created.ID
 			}
 
-			rec := serveWithRouteParam(t, ep.AssignTicketV1,
-				http.MethodPatch, "/v1/tickets/"+ticketID+"/assign",
-				"id", ticketID, mustBody(t, tt.body))
+			rec := func() *httptest.ResponseRecorder {
+				var bodyBytes []byte
+				if tt.body != nil {
+					if s, ok := tt.body.(string); ok {
+						bodyBytes = []byte(s)
+					} else {
+						var err error
+						bodyBytes, err = json.Marshal(tt.body)
+						require.NoError(t, err)
+					}
+				}
+
+				var reader io.Reader
+				if bodyBytes != nil {
+					reader = bytes.NewReader(bodyBytes)
+				}
+
+				req := httptest.NewRequestWithContext(
+					context.Background(),
+					http.MethodPatch,
+					"/v1/tickets/"+ticketID+"/assign",
+					reader,
+				)
+				req.Header.Set("Content-Type", "application/json")
+
+				rctx := chi.NewRouteContext()
+				rctx.URLParams.Add("id", ticketID)
+				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+				rec := httptest.NewRecorder()
+				ep.AssignTicketV1(rec, req)
+
+				return rec
+			}()
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 

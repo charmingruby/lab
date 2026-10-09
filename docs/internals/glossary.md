@@ -13,13 +13,15 @@ This is a living glossary for the Go backend template. It explains what common t
 
 #### Domain
 
-A bounded context in `internal/<domain>/`. Each domain is a self-contained module with its own model, usecase, repository, and delivery mechanism(s). Domains never import each other's internals — they communicate through client ports.
+A bounded context in `internal/<domain>/`. Each domain is a self-contained module with its own model, usecase, repository, and delivery mechanism(s). Domains never import each other's internals — they communicate through the producer's `public` port.
 
 Source: [architecture.md](./architecture.md), [internal/ticket/](../../internal/ticket/)
 
 #### Model
 
-The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Models build on the shared base model (currently `core.Model`) for base fields (ID, timestamps) and state-mutation helpers (currently `core.Model.Touch`). Constructors return `(*Model, error)` when there are invariants to enforce.
+The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Constructors return `(*Model, error)` when there are invariants to enforce.
+
+- Current: builds on `core.Model` for base fields and `Touch` for state mutation.
 
 Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go), [internal/shared/core/model.go](../../internal/shared/core/model.go)
 
@@ -31,13 +33,15 @@ Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ti
 
 #### Repository
 
-The golden source for a domain's own data — a concrete postgres struct, not an interface. One struct per aggregate, methods named by business meaning. All methods take `context.Context` first. Not-found returns `(nil, nil)`, never `sql.ErrNoRows`. There is no port here on purpose: postgres is effectively immutable, and re-introducing an interface on the day a swap is needed is trivial.
+The golden source for a domain's own data — a concrete struct, not an interface. One struct per aggregate, methods named by business meaning. All methods take `context.Context` first. Not-found returns `(nil, nil)`. There is no port here on purpose: the golden source is stable, and introducing an interface on the day a swap is needed is trivial.
+
+- Current: postgres.
 
 Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
 #### Client (outbound port)
 
-An outbound port — the interface a domain exposes for others to read its data, or the interface a domain consumes to call external systems. Ports exist here as an anti-corruption layer: external providers are easily swapped. All ports for a domain (outbound and exposed reads) live together in `client/*.go`.
+An outbound port — the interface a domain consumes to call external systems (notifier, storage). Exposed reads for other domains never live here — those belong to `public/`. Ports exist here as an anti-corruption layer for swappable providers.
 
 Source: [internal/ticket/client/](../../internal/ticket/client/)
 
@@ -49,7 +53,9 @@ Source: [internal/ticket/client/console/](../../internal/ticket/client/console/)
 
 #### Endpoint
 
-The HTTP handler that parses a request (via the shared HTTP helpers, currently `httpx.ParseRequest`), calls a usecase, and writes a response (via the shared HTTP writers, currently `httpx.Write*Response`). One DTO per endpoint with `validate:` tags. Endpoints never contain business logic.
+The handler for one delivery mechanism that parses a request, calls a usecase, and writes a response. One DTO per endpoint with validation tags. Endpoints never contain business logic.
+
+- Current: HTTP handler via `httpx.ParseRequest` / `httpx.Write*Response`.
 
 Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/)
 
@@ -57,7 +63,9 @@ Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/)
 
 #### Port
 
-A Go `interface` that decouples the usecase from an external implementation. Used only for outbound boundaries (`client/`): external providers are easily swapped, so that anti-corruption layer pays off. The golden source has no port — `repository/` is concrete.
+An interface that decouples the usecase from an external implementation. Used only for outbound boundaries (`client/`). The golden source has no port — `repository/` is concrete.
+
+- Current: e.g. `client/notifier.go`.
 
 Source: [internal/ticket/client/notifier.go](../../internal/ticket/client/notifier.go)
 
@@ -69,21 +77,15 @@ Source: [architecture.md](./architecture.md)
 
 #### Dependency spine
 
-The layered dependency flow within a domain:
+The layered dependency flow within a domain. Canonical definition lives in [architecture.md](./architecture.md#domain-structure) — do not duplicate the diagram here.
 
-```
-<protocol> → usecase → repository (concrete postgres)
-                      → client (port)   → client/console
-                      → model
-```
-
-Data flows right-to-left: the usecase calls the concrete repository and the client ports, the protocol (endpoint) depends on the usecase. Nothing crosses layers in the wrong direction.
+Data flows right-to-left: the usecase calls the concrete repository and the client ports, the endpoint depends on the usecase. Nothing crosses layers in the wrong direction.
 
 Source: [architecture.md](./architecture.md), [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 #### Public adapter
 
-A thin struct over a usecase that exposes a client port for cross-domain reads. Assembled in `<domain>/public.go`, which builds repositories + usecase and returns the adapter typed as the client port.
+A thin struct over a usecase that exposes a read port for cross-domain reads. Port + adapter live together in `<domain>/public/`. Assembled in `<domain>/public.go`, which builds repositories + usecase and returns the adapter typed as the public port.
 
 Source: [internal/ticket/public.go](../../internal/ticket/public.go), [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go)
 
@@ -103,7 +105,9 @@ Source: [architecture.md](./architecture.md)
 
 #### Transaction manager
 
-Wraps the shared DB helper (currently `postgrex.RunInTx`) for multi-repo writes. A concrete `repository.TransactionManager` taking a `repository.Transaction` with the repositories needed inside the transaction.
+Wraps multi-repo writes in one atomic unit. A concrete `repository.TransactionManager` taking a `repository.Transaction` with the repositories needed inside the transaction.
+
+- Current: backed by `postgrex.RunInTx`.
 
 Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticket/repository/transaction_manager.go)
 
@@ -111,13 +115,13 @@ Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticke
 
 #### shared
 
-Shared domain language in `internal/shared/`: domain types, typed errors, and ports + adapters used by two or more domains. Usual members are a base model with ID/timestamps, pagination params, a transaction manager type, and typed errors mapping domain outcomes to HTTP status (`NotFound` → 404, `Conflict` → 409, `Validation` → 422, `Integration` → 500). See the directory for the current set — do not treat this doc as inventory.
+Shared domain language in `internal/shared/`: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set — do not treat this doc as inventory.
 
 Source: [internal/shared/](../../internal/shared/)
 
 #### platform
 
-Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers (e.g. HTTP, logging, DB, validation). Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set.
+Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers. Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set — do not treat this doc as inventory.
 
 Source: [internal/platform/](../../internal/platform/)
 

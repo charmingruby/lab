@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,7 +78,20 @@ func TestListTicketsV1(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			rec := serve(t, ep.ListTicketsV1, http.MethodGet, "/v1/tickets"+tt.query, nil)
+			rec := func() *httptest.ResponseRecorder {
+				req := httptest.NewRequestWithContext(
+					context.Background(),
+					http.MethodGet,
+					"/v1/tickets"+tt.query,
+					nil,
+				)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ep.ListTicketsV1(rec, req)
+
+				return rec
+			}()
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 

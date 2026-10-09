@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,8 +65,24 @@ func TestGetTicketV1(t *testing.T) {
 				ticketID = created.ID
 			}
 
-			rec := serveWithRouteParam(t, ep.GetTicketV1,
-				http.MethodGet, "/v1/tickets/"+ticketID, "id", ticketID, nil)
+			rec := func() *httptest.ResponseRecorder {
+				req := httptest.NewRequestWithContext(
+					context.Background(),
+					http.MethodGet,
+					"/v1/tickets/"+ticketID,
+					nil,
+				)
+				req.Header.Set("Content-Type", "application/json")
+
+				rctx := chi.NewRouteContext()
+				rctx.URLParams.Add("id", ticketID)
+				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+				rec := httptest.NewRecorder()
+				ep.GetTicketV1(rec, req)
+
+				return rec
+			}()
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 

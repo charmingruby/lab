@@ -6,11 +6,15 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
+type Reader interface {
+	GetTicketStatus(ctx context.Context, ticketID string) (string, error)
+}
+
 type TicketReader struct {
 	uc *usecase.Usecase
 }
 
-func NewTicketReader(uc *usecase.Usecase) *TicketReader {
+func NewTicketReader(uc *usecase.Usecase) Reader {
 	return &TicketReader{uc: uc}
 }
 

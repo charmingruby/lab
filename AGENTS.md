@@ -15,8 +15,8 @@ Use the terminology defined in [docs/internals/glossary.md](docs/internals/gloss
 ## Architectural rules
 
 1. **Never skip the usecase.** The usecase owns business validation, transaction boundaries, and error mapping. Skipping it means scattered logic, no transaction safety, and tests that cannot isolate behavior.
-2. **Never import another domain's internals.** Use its `client` port instead. Cross-module imports create invisible coupling and make it impossible to change one domain without breaking another.
-3. **Never add layers that do not exist.** The pattern is protocol → usecase → repository (concrete postgres) + client ports → adapters. The golden source has no interface — postgres is effectively immutable. Only external integrations get a port, as an anti-corruption layer. Extra layers do not add safety; they add surface area for bugs.
+2. **Never import another domain's internals.** Use its `public` port instead. Cross-module imports create invisible coupling and make it impossible to change one domain without breaking another.
+3. **Never add layers that do not exist.** The pattern is endpoint → usecase → repository (concrete golden source) + client ports → adapters. The golden source has no interface — postgres is effectively immutable. Only external integrations get a port, as an anti-corruption layer. Extra layers do not add safety; they add surface area for bugs. `client/` is outbound only; exposed reads live in `public/`.
 
 See [docs/internals/architecture.md](docs/internals/architecture.md) for delivery mechanisms, module boundaries, repositories, clients, and external integrations.
 
@@ -25,11 +25,12 @@ See [docs/internals/architecture.md](docs/internals/architecture.md) for deliver
 Domains use a concrete golden source plus ports only for externals:
 
 ```
-<protocol> → usecase → repository (concrete postgres)
-                      → client (port) → adapter
-                      ↓
-                    model
+endpoint → usecase → repository (concrete golden source)
+                   → client (port) → adapter
+                   → model
 ```
+
+Canonical spine — see [docs/internals/architecture.md](docs/internals/architecture.md#domain-structure).
 
 Tests use no mocks: usecase tests validate logic against real postgres (`test/container/postgres.go`), HTTP tests validate the edge through the full stack, external clients run on `client/memory/` fakes.
 
