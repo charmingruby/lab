@@ -32,12 +32,8 @@ tasks:
     cmds:
       - go fmt ./...
       - golangci-lint run --fix ./...
-  mock:
-    desc: Generates mocks
-    cmd: mockery
   test:
-    desc: Runs tests
-    deps: [mock]
+    desc: Runs tests (integration tests spin postgres containers)
     cmd: go test ./... -race
   build:
     desc: Builds API binary

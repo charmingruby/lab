@@ -2,25 +2,24 @@ package usecase_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/shared/customerr"
+	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestCreateTicket(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
-		mockSetup func(repo *mocks.MockTicketRepository)
-		input     usecase.CreateTicketInput
-		name      string
-		errType   customerr.ErrorType
-		wantErr   bool
+		input   usecase.CreateTicketInput
+		name    string
+		errType customerr.ErrorType
+		wantErr bool
 	}{
 		{
 			name: "invalid priority returns validation error",
@@ -29,36 +28,15 @@ func TestCreateTicket(t *testing.T) {
 				Description: "A description",
 				Priority:    "invalid",
 			},
-			mockSetup: func(repo *mocks.MockTicketRepository) {},
-			wantErr:   true,
-			errType:   customerr.TypeValidation,
-		},
-		{
-			name: "repository create error returns integration error",
-			input: usecase.CreateTicketInput{
-				Title:       "Test Ticket",
-				Description: "A description",
-				Priority:    "low",
-			},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					Create(mock.Anything, mock.Anything).
-					Return(errors.New("db connection failed"))
-			},
 			wantErr: true,
-			errType: customerr.TypeIntegration,
+			errType: customerr.TypeValidation,
 		},
 		{
-			name: "success creates ticket and returns ID",
+			name: "success creates ticket and reads back",
 			input: usecase.CreateTicketInput{
 				Title:       "Test Ticket",
 				Description: "A description",
 				Priority:    "high",
-			},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					Create(mock.Anything, mock.Anything).
-					Return(nil)
 			},
 			wantErr: false,
 		},
@@ -66,12 +44,9 @@ func TestCreateTicket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := mocks.NewMockTicketRepository(t)
-			tt.mockSetup(repo)
+			s := newTestService(t)
 
-			uc := usecase.New(repo, nil, nil)
-
-			got, err := uc.CreateTicket(context.Background(), tt.input)
+			got, err := s.uc.CreateTicket(ctx, tt.input)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -82,6 +57,12 @@ func TestCreateTicket(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotEmpty(t, got.ID)
+
+			ticket, err := s.uc.GetTicket(ctx, usecase.GetTicketInput{TicketID: got.ID})
+			require.NoError(t, err)
+			assert.Equal(t, tt.input.Title, ticket.Title)
+			assert.Equal(t, model.OpenTicketStatus, ticket.Status)
+			assert.Equal(t, model.TicketPriority(tt.input.Priority), ticket.Priority)
 		})
 	}
 }

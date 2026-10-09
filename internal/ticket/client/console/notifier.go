@@ -3,8 +3,8 @@ package console
 import (
 	"context"
 
-	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/platform/logging"
+	"github.com/charmingruby/lab/internal/ticket/client"
 )
 
 type Notifier struct{}

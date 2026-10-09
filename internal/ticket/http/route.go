@@ -7,7 +7,7 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
-func SetupEndpoints(uc usecase.Usecase) *endpoint.Endpoint {
+func SetupEndpoints(uc *usecase.Usecase) *endpoint.Endpoint {
 	return endpoint.New(uc)
 }
 

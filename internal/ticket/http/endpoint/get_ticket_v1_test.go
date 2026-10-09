@@ -3,83 +3,38 @@ package endpoint_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
-	"github.com/charmingruby/lab/internal/shared/customerr"
-	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
-	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestGetTicketV1(t *testing.T) {
-	assigneeID := "user-456"
-
-	makeTicket := func() *model.Ticket {
-		t := &model.Ticket{
-			Title:       "Test Ticket",
-			Description: "A description",
-			Status:      model.InProgressTicketStatus,
-			Priority:    model.HighPriority,
-			AssigneeID:  &assigneeID,
-		}
-		t.ID = "ticket-123"
-		t.CreatedAt = time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-		return t
-	}
-
 	tests := []struct {
-		mockSetup     func(uc *mocks.MockUsecase)
-		wantBodyCheck func(t *testing.T, body map[string]any)
+		wantBodyCheck func(t *testing.T, body map[string]any, ticketID string)
 		name          string
-		ticketID      string
 		wantStatus    int
+		seed          bool
 	}{
 		{
-			name:     "ticket not found returns 404",
-			ticketID: "nonexistent",
-			mockSetup: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "nonexistent"}).
-					Return(nil, customerr.NotFound("ticket not found"))
-			},
+			name:       "ticket not found returns 404",
+			seed:       false,
 			wantStatus: http.StatusNotFound,
-			wantBodyCheck: func(t *testing.T, body map[string]any) {
+			wantBodyCheck: func(t *testing.T, body map[string]any, ticketID string) {
 				assert.Equal(t, "ticket not found", body["message"])
 			},
 		},
 		{
-			name:     "integration error returns 500",
-			ticketID: "ticket-123",
-			mockSetup: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "ticket-123"}).
-					Return(nil, customerr.Integration(errors.New("db error")))
-			},
-			wantStatus: http.StatusInternalServerError,
-			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "Internal Server Error", body["message"])
-			},
-		},
-		{
-			name:     "success returns ticket",
-			ticketID: "ticket-123",
-			mockSetup: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					GetTicket(mock.Anything, usecase.GetTicketInput{TicketID: "ticket-123"}).
-					Return(makeTicket(), nil)
-			},
+			name:       "success returns ticket",
+			seed:       true,
 			wantStatus: http.StatusOK,
-			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "ticket-123", body["id"])
+			wantBodyCheck: func(t *testing.T, body map[string]any, ticketID string) {
+				assert.Equal(t, ticketID, body["id"])
 				assert.Equal(t, "Test Ticket", body["title"])
 				assert.Equal(t, "A description", body["description"])
 				assert.Equal(t, "in_progress", body["status"])
@@ -91,28 +46,49 @@ func TestGetTicketV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockUsecase(t)
-			tt.mockSetup(uc)
+			ep, uc := newTestEndpoint(t)
 
-			ep := endpoint.New(uc)
+			ticketID := "nonexistent"
+			if tt.seed {
+				created, err := uc.CreateTicket(context.Background(), usecase.CreateTicketInput{
+					Title:       "Test Ticket",
+					Description: "A description",
+					Priority:    "high",
+				})
+				require.NoError(t, err)
 
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/tickets/"+tt.ticketID, nil)
+				require.NoError(t, uc.AssignTicket(context.Background(), usecase.AssignTicketInput{
+					TicketID:   created.ID,
+					AssigneeID: "user-456",
+				}))
 
-			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("id", tt.ticketID)
-			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+				ticketID = created.ID
+			}
 
-			rec := httptest.NewRecorder()
+			rec := func() *httptest.ResponseRecorder {
+				req := httptest.NewRequestWithContext(
+					context.Background(),
+					http.MethodGet,
+					"/v1/tickets/"+ticketID,
+					nil,
+				)
+				req.Header.Set("Content-Type", "application/json")
 
-			ep.GetTicketV1(rec, req)
+				rctx := chi.NewRouteContext()
+				rctx.URLParams.Add("id", ticketID)
+				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+				rec := httptest.NewRecorder()
+				ep.GetTicketV1(rec, req)
+
+				return rec
+			}()
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 
 			var body map[string]any
-			if rec.Body.Len() > 0 {
-				_ = json.Unmarshal(rec.Body.Bytes(), &body)
-			}
-			tt.wantBodyCheck(t, body)
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+			tt.wantBodyCheck(t, body, ticketID)
 		})
 	}
 }

@@ -1,27 +1,24 @@
 # Architecture
 
-The Go backend template follows a **ports and adapters** architecture. Every domain is a self-contained module with the same dependency spine. This document describes the runtime flow and how the pieces connect.
+Ports and adapters. Every domain is a self-contained module with the same dependency spine.
 
 ## Request lifecycle
 
+Inbound transport resolves to an endpoint, which follows the domain spine (see [Domain structure](#domain-structure)):
+
 ```
-cmd/api/main.go
-  → chi router (mounted at /api)
-    → domain middleware (each <domain>.go wires itself)
-      → versioned route (/v1/<resources>)
-        → endpoint (parses request, calls usecase)
-          → usecase (business logic, transactions)
-            → model (invariants, state changes)
-            → repository/port (interface)
-              → repository/postgres (prepared statements)
-            → client/port (interface, if cross-domain or external)
-              → client/<adapter>/ (concrete implementation)
-          → httpx.Write*Response → HTTP response
+delivery → endpoint → usecase → model
+                           → repository (concrete golden source)
+                           → client port → adapter
 ```
+
+- Current: chi mounted at `/api` with `httpx` helpers. Source: `cmd/api/main.go`, `internal/platform/httpx/`.
 
 ## Domain wiring
 
-Each domain exposes one `New(r chi.Router, db *sqlx.DB) error` function in `<domain>.go`. This is the composition root — it builds the transaction manager, postgres repositories, usecases, endpoints, and registers routes. No wiring happens in endpoints or usecases.
+Each domain exposes one composition root in `<domain>.go` — it builds dependencies and registers routes. No wiring happens in endpoints or usecases.
+
+- Current: `New(r chi.Router, db *sqlx.DB) error`, builds transaction manager, postgres repositories, usecases, endpoints.
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
@@ -31,56 +28,53 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 - `internal/<domain>/` — one ports-and-adapters module per bounded context.
   - `<domain>.go` — composition root (wires everything)
   - `public.go` — cross-domain read assembly
-  - `http/endpoint/` — request DTO + handler
+  - `http/endpoint/` — request DTO + handler (one delivery mechanism, see below)
   - `http/route.go` — registers versioned routes
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
-  - `repository/` — persistence port (interface), implementations in `postgres/`
-  - `client/` — outbound ports (interfaces), adapters in subdirectories
-- `internal/shared/` — shared domain language: domain types (e.g. base model, pagination, transactions), typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
-- `internal/platform/` — internal infrastructure with zero domain awareness: raw external clients and transport/config helpers (e.g. HTTP, logging, DB, validation). See the directory for the current set.
-- `pkg/` — reserved for code exposed to the outside world (e.g. public API contract).
+  - `repository/` — the golden source, concrete (no interface — swapping it is trivial when needed). Single-repo writes need no explicit transaction; the repository handles it.
+  - `client/` — outbound ports this domain consumes (interfaces) plus adapters in subdirectories. Ports exist here as an anti-corruption layer for swappable providers. Never hosts exposed reads — those live in `public/`.
+- `internal/shared/` — shared domain language: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
+- `internal/platform/` — internal infrastructure with zero domain awareness: raw external clients and transport/config helpers. See the directory for the current set.
+- `pkg/` — reserved for code exposed to the outside world.
+
+- Current: postgres; `client/` adapters per provider. See the directories for the current set.
 
 ## Cross-domain communication
 
 Domains never import each other's `usecase`, `repository`, or `model` packages. Instead:
 
-1. The producing domain defines a **client port** interface in `client/`.
-2. A **public adapter** wraps a usecase and implements the port in `public/`.
+1. The producing domain defines a read port in `public/` (not in `client/` — `client/` is outbound only).
+2. A **public adapter** in `public/` wraps a usecase and implements the port.
 3. **`public.go`** assembles the wiring and returns the adapter typed as the port.
-4. The consuming domain depends only on the client port interface.
+4. The consuming domain depends only on the public port interface.
 
 Source: [cross-module-reads.md](./cross-module-reads.md), [internal/ticket/public.go](../../internal/ticket/public.go)
 
 ## Error flow
 
-Usecases map domain outcomes to typed errors:
+Usecases map domain outcomes to typed errors; endpoints map typed errors to transport statuses. Usecases never return raw strings or unwrapped infrastructure errors.
 
-| Outcome                | Error type              | HTTP status |
-| ---------------------- | ----------------------- | ----------- |
-| Resource not found     | `customerr.NotFound`    | 404         |
-| Duplicate / conflict   | `customerr.Conflict`    | 409         |
-| Invalid input          | `customerr.Validation`  | 422         |
-| Infrastructure failure | `customerr.Integration` | 500         |
-
-Endpoints pass errors to `httpx.WriteError`, which maps the `customerr` type to the correct HTTP status. Usecases never return raw strings or `fmt.Errorf` without a `customerr` wrapper.
+- Current: `customerr.NotFound → 404`, `Conflict → 409`, `Validation → 422`, `Integration → 500`, via `httpx.WriteError`.
 
 Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr/customerr.go)
 
 ## Transaction safety
 
-Multi-repo writes (e.g., updating two repositories atomically) go through `core.TransactionManager[repository.Transaction]`. The transaction struct holds the repo interfaces needed inside the transaction. Single-repo writes do not need explicit transactions — the postgres adapter handles it.
+Multi-repo writes run atomically through a transaction holding the repositories needed inside it. Single-repo writes do not need explicit transactions.
 
-Source: [internal/shared/core/transaction.go](../../internal/shared/core/transaction.go), [internal/ticket/repository/postgres/transaction_manager.go](../../internal/ticket/repository/postgres/transaction_manager.go)
+- Current: `repository.TransactionManager` + `repository.Transaction`, backed by `postgrex.RunInTx`.
+
+Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticket/repository/transaction_manager.go)
 
 ## Domain structure
 
-A domain is a **ports and adapters** module in `internal/<domain>`, one dependency spine:
+A domain is a **ports and adapters** module in `internal/<domain>`. Canonical dependency spine (the only diagram — everything else links here):
 
 ```
-<protocol> → usecase → repository (port) → repository/postgres
-                              → client (port)   → client/console
-                              → model
+endpoint → usecase → repository (concrete golden source)
+                   → client (port) → adapter
+                   → model
 ```
 
 ### Delivery mechanism layout
@@ -96,7 +90,9 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 ### Repository and client shape
 
-`repository/` — template for any port with multiple backends: interface at the root (e.g. `repository/repository.go`), each implementation in its own subpackage (e.g. `repository/postgres/`). Same shape for `client/` (port e.g. `client/notifier.go`, adapter e.g. `client/console/`) and for messaging adapters inside `delivery/queue/` (e.g. `queue/kafka`, `queue/sqs`).
+`repository/` is concrete — no port interface, no subpackages. `client/` keeps the port-adapter split (port + one subpackage per adapter). Same adapter-per-subpackage shape for messaging adapters inside `delivery/queue/`.
+
+- Current: postgres; `client/` adapters per provider; queue adapters per provider. See the directories for the current set.
 
 ### External dependencies
 

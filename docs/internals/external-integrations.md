@@ -1,14 +1,16 @@
 # External integrations (storage, email, cache, third-party APIs)
 
-Any dependency the app doesn't own — object storage, email delivery, cache, a third-party API — follows the same three-layer split, regardless of scope. What changes based on scope is only **where the port and adapter live**, never whether they exist.
+Any dependency the app doesn't own follows the same three-layer split, regardless of scope. What changes based on scope is only **where the port and adapter live**, never whether they exist.
 
 - **Raw connection**: always in `internal/platform/`. A thin wrapper around the SDK/client library — connects, configures, exposes primitive operations. No domain awareness, no business logic.
-- **Port (interface)**: always defined next to whoever consumes it — either a domain's `client/` or `internal/shared/client/`. This is what usecases depend on and what gets mocked.
+- **Port (interface)**: always defined next to whoever consumes it — either a domain's `client/` or `internal/shared/client/`. This is what usecases depend on. It is never mocked: tests use a real adapter (the production one or an in-memory fake).
 - **Adapter**: implements the port by calling the `internal/platform/` raw client. Lives beside the port it implements.
 
 `repository/` never hosts this. External integrations aren't a domain's source of truth — they're consumed, so they're always a `client` port.
 
 **Messaging is not an external integration.** A queue is a _delivery mechanism_ and lives in `delivery/queue/`. See [architecture.md](./architecture.md).
+
+Code below is current illustration (`s3`, `ticket`); the rule is provider-agnostic.
 
 ## Decision: domain-specific vs. shared
 
@@ -66,10 +68,10 @@ internal/shared/
             └── s3.go       # adapter: implements storage.go, wraps internal/platform/s3
 ```
 
-Every consuming domain imports the port from `internal/shared/client/storage`, and wires the concrete adapter in its own `<domain>/<domain>.go`:
+Every consuming domain imports the port from `internal/shared/client/storage`, and wires the concrete adapter in its own `<domain>/<domain>.go` (illustrative — names depend on the provider):
 
 ```go
-// internal/ticket/ticket.go
+// internal/ticket/ticket.go — illustrative, not current inventory
 storage := s3.New(s3.NewClient(cfg))
 createReceipt := usecase.New(storage, txManager, notifier) // storage typed as shared client.Storage
 ```
@@ -93,13 +95,22 @@ func (c *Client) PutObject(ctx context.Context, bucket, key string, data []byte)
 
 `internal/platform/` never imports anything from `internal/shared/` or `internal/<domain>/`.
 
+## Testing an integration
+
+The port is never mocked. Each test injects a real implementation, whichever is most viable:
+
+- **The real integration** — a local/sandboxed provider, same philosophy as the golden source via `test/container/`.
+- **`client/memory/`** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
+
+- Current: postgres is the golden-source example; sandbox examples are minio, localstack, mailhog.
+
 ## Rules
 
-- ✅ Every external integration is a `client` port — never a `repository`.
+- ✅ Every external integration is a `client` port — never a `repository`. The golden source has no port at all.
 - ✅ Raw SDK/connection code lives in `internal/platform/`, with zero domain awareness.
-- ✅ One domain only → port + adapter inside that domain's `client/`.
+- ✅ One domain only → port + adapters inside that domain's `client/`.
 - ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/<provider>/`.
-- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly.
+- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `client/memory/` fake) — never a mock.
 - ❌ Never call a `internal/platform/` client directly from a usecase — always through a `client` adapter.
 - ❌ Never duplicate the same integration's port across domains once a second domain needs it — move it to `internal/shared/client/`.
 - ❌ Never model an external integration as a `repository` — it isn't the domain's source of truth.

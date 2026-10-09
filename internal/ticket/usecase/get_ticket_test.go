@@ -2,81 +2,47 @@ package usecase_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/shared/customerr"
-	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestGetTicket(t *testing.T) {
-	ticketID := "ticket-123"
-
-	existingTicket := &model.Ticket{
-		Title:       "Test Ticket",
-		Description: "A description",
-		Status:      model.OpenTicketStatus,
-		Priority:    model.MediumPriority,
-	}
-	existingTicket.ID = ticketID
+	ctx := context.Background()
 
 	tests := []struct {
-		mockSetup func(repo *mocks.MockTicketRepository)
-		want      *model.Ticket
-		name      string
-		input     usecase.GetTicketInput
-		errType   customerr.ErrorType
-		wantErr   bool
+		name    string
+		errType customerr.ErrorType
+		seed    bool
+		wantErr bool
 	}{
 		{
-			name:  "repository error returns integration error",
-			input: usecase.GetTicketInput{TicketID: ticketID},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					FindByID(mock.Anything, ticketID).
-					Return(nil, errors.New("db timeout"))
-			},
-			wantErr: true,
-			errType: customerr.TypeIntegration,
-		},
-		{
-			name:  "ticket not found returns not found error",
-			input: usecase.GetTicketInput{TicketID: ticketID},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					FindByID(mock.Anything, ticketID).
-					Return(nil, nil)
-			},
+			name:    "ticket not found returns not found error",
+			seed:    false,
 			wantErr: true,
 			errType: customerr.TypeNotFound,
 		},
 		{
-			name:  "success returns ticket",
-			input: usecase.GetTicketInput{TicketID: ticketID},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					FindByID(mock.Anything, ticketID).
-					Return(existingTicket, nil)
-			},
-			want:    existingTicket,
+			name:    "success returns ticket",
+			seed:    true,
 			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := mocks.NewMockTicketRepository(t)
-			tt.mockSetup(repo)
+			s := newTestService(t)
 
-			uc := usecase.New(repo, nil, nil)
+			ticketID := "missing"
+			if tt.seed {
+				ticketID = createTicket(t, s.uc)
+			}
 
-			got, err := uc.GetTicket(context.Background(), tt.input)
+			got, err := s.uc.GetTicket(ctx, usecase.GetTicketInput{TicketID: ticketID})
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -86,7 +52,8 @@ func TestGetTicket(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, ticketID, got.ID)
+			assert.Equal(t, "Test Ticket", got.Title)
 		})
 	}
 }

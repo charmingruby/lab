@@ -2,113 +2,68 @@ package usecase_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/shared/core"
-	"github.com/charmingruby/lab/internal/shared/customerr"
-	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestListTickets(t *testing.T) {
-	tickets := []model.Ticket{
-		{
-			Title:       "Ticket 1",
-			Description: "First ticket",
-			Status:      model.OpenTicketStatus,
-			Priority:    model.HighPriority,
-		},
-		{
-			Title:       "Ticket 2",
-			Description: "Second ticket",
-			Status:      model.OpenTicketStatus,
-			Priority:    model.LowPriority,
-		},
-	}
-	tickets[0].ID = "ticket-1"
-	tickets[1].ID = "ticket-2"
-
-	defaultParams := core.PaginationParams{Page: 1, Limit: core.DefaultPageSize}
+	ctx := context.Background()
 
 	tests := []struct {
-		mockSetup func(repo *mocks.MockTicketRepository)
 		name      string
-		errType   customerr.ErrorType
-		input     usecase.ListTicketsInput
-		want      usecase.ListTicketsOutput
-		wantErr   bool
+		params    core.PaginationParams
+		seedCount int
+		wantTotal int
+		wantPages int
+		wantLen   int
 	}{
 		{
-			name:  "repository error returns integration error",
-			input: usecase.ListTicketsInput{Status: "open", Params: defaultParams},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					ListByStatus(mock.Anything, "open", defaultParams).
-					Return(nil, 0, errors.New("db connection refused"))
-			},
-			wantErr: true,
-			errType: customerr.TypeIntegration,
+			name:      "empty result returns zero total",
+			seedCount: 0,
+			params:    core.PaginationParams{Page: 1, Limit: 25},
+			wantTotal: 0,
+			wantPages: 0,
+			wantLen:   0,
 		},
 		{
-			name:  "success returns tickets and total",
-			input: usecase.ListTicketsInput{Status: "open", Params: defaultParams},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					ListByStatus(mock.Anything, "open", defaultParams).
-					Return(tickets, 2, nil)
-			},
-			want: usecase.ListTicketsOutput{
-				Tickets:    tickets,
-				Page:       1,
-				Limit:      core.DefaultPageSize,
-				Total:      2,
-				TotalPages: 1,
-			},
-			wantErr: false,
-		},
-		{
-			name:  "empty result returns empty slice",
-			input: usecase.ListTicketsInput{Status: "resolved", Params: defaultParams},
-			mockSetup: func(repo *mocks.MockTicketRepository) {
-				repo.EXPECT().
-					ListByStatus(mock.Anything, "resolved", defaultParams).
-					Return([]model.Ticket{}, 0, nil)
-			},
-			want: usecase.ListTicketsOutput{
-				Tickets:    []model.Ticket{},
-				Page:       1,
-				Limit:      core.DefaultPageSize,
-				Total:      0,
-				TotalPages: 0,
-			},
-			wantErr: false,
+			name:      "success returns tickets with pagination",
+			seedCount: 3,
+			params:    core.PaginationParams{Page: 1, Limit: 2},
+			wantTotal: 3,
+			wantPages: 2,
+			wantLen:   2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := mocks.NewMockTicketRepository(t)
-			tt.mockSetup(repo)
+			s := newTestService(t)
 
-			uc := usecase.New(repo, nil, nil)
-
-			got, err := uc.ListTickets(context.Background(), tt.input)
-
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.True(t, customerr.IsType(err, tt.errType))
-				assert.Equal(t, usecase.ListTicketsOutput{}, got)
-				return
+			for i := range tt.seedCount {
+				_, err := s.uc.CreateTicket(ctx, usecase.CreateTicketInput{
+					Title:       fmt.Sprintf("Ticket %d", i+1),
+					Description: "A description",
+					Priority:    "low",
+				})
+				require.NoError(t, err)
 			}
 
+			got, err := s.uc.ListTickets(ctx, usecase.ListTicketsInput{
+				Status: "open",
+				Params: tt.params,
+			})
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Len(t, got.Tickets, tt.wantLen)
+			assert.Equal(t, tt.wantTotal, got.Total)
+			assert.Equal(t, tt.wantPages, got.TotalPages)
+			assert.Equal(t, tt.params.Page, got.Page)
+			assert.Equal(t, tt.params.Limit, got.Limit)
 		})
 	}
 }

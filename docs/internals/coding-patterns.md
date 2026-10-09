@@ -1,20 +1,22 @@
 # Coding Patterns
 
-Implementation reference for a domain feature. `internal/ticket/` is one illustration of the pattern — mirror its shape for any `<domain>`, do not invent new shapes.
+Implementation reference for a domain feature. Rules below are the pattern; code blocks are the current illustration (`internal/ticket/`, postgres, HTTP). Mirror the shape for any `<domain>`, do not invent new shapes.
 
 > **Module structure**: see [architecture.md](./architecture.md).
 
 ## 1. Model
 
-Constructor, invariants, state changes as explicit methods using `core.Model.Touch`.
+Constructor, invariants, state changes as explicit methods.
 
 **Rules:**
 
 - ✅ Constructor returns `(*Model, error)` when there are invariants to hold; plain `*Model` otherwise.
 - ✅ Invalid state returns a package-level `var Err...`, not a string.
-- ✅ State changes are methods named as verbs (`Assign`, `Resolve`), using `Touch(func(m *core.Model))`.
+- ✅ State changes are methods named as verbs (`Assign`, `Resolve`).
 - ✅ Legitimate values are typed constants with `Valid()`.
-- ❌ Never expose raw field mutation from outside — never `ticket.Status = "open"` outside the model package.
+- ❌ Never expose raw field mutation from outside.
+
+- Current: state changes use `core.Model.Touch`.
 
 Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go)
 
@@ -71,52 +73,33 @@ func (t *Ticket) transitionTo(status TicketStatus, after func()) error {
 
 ---
 
-## 2. Repository (port)
+## 2. Repository (golden source, concrete)
 
-Interface at the root: `internal/ticket/repository/repository.go`.
+The golden source in `internal/<domain>/repository/`. No interface, no subpackage per provider.
 
 **Rules:**
 
-- ✅ One interface per aggregate, methods named by business meaning.
+- ✅ One concrete struct per aggregate, methods named by business meaning.
 - ✅ All methods take `context.Context` first and return the model or count.
-- ✅ Not-found returns `(nil, nil)` — never `sql.ErrNoRows`.
-- ❌ No ORM/SQL types in the port — usecases and mocks stay transport-free.
+- ✅ Not-found returns `(nil, nil)`.
+- ❌ No interface for the golden source — usecases take the concrete repository.
+- ❌ No inline queries in methods — always via prepared statements.
 
-Source: [internal/ticket/repository/repository.go](../../internal/ticket/repository/repository.go)
+- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, per-method timeout, `LIMIT/OFFSET` plus `COUNT(*)`. `sql.ErrNoRows` maps to `(nil, nil)`.
 
-```go
-// internal/ticket/repository/repository.go
-type TicketRepository interface {
-	Create(ctx context.Context, ticket *model.Ticket) error
-	FindByID(ctx context.Context, id string) (*model.Ticket, error)
-	Update(ctx context.Context, ticket *model.Ticket) error
-	ListByStatus(ctx context.Context, status string, params core.PaginationParams) ([]model.Ticket, int, error)
-}
-
-type Transaction struct {
-	TicketRepo TicketRepository
-}
-```
-
----
-
-## 3. repository/postgres
-
-Prepared statements via `postgrex.Querier`.
-
-**Rules:**
-
-- ✅ Query map as `var ticketQueries = map[string]string{ ... }`, prepared once in the constructor.
-- ✅ `deleted_at IS NULL` on every read.
-- ✅ `context.WithTimeout(ctx, postgrex.DefaultReadTimeout)` per method.
-- ✅ Not-found returns `(nil, nil)` — never surface `sql.ErrNoRows` to callers.
-- ✅ `LIMIT $2 OFFSET $3` pagination plus a separate `COUNT(*)` query.
-- ❌ No inline queries in methods — always via the prepared `statement(name)`.
-
-Source: [internal/ticket/repository/postgres/ticket_repository.go](../../internal/ticket/repository/postgres/ticket_repository.go)
+Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
 ```go
-// internal/ticket/repository/postgres/ticket_repository.go
+// internal/ticket/repository/ticket_repository.go
+type TicketRepository struct {
+	db    postgrex.Querier
+	stmts map[string]*sqlx.Stmt
+}
+
+func NewTicketRepository(db postgrex.Querier) (*TicketRepository, error) {
+	// prepares every query in ticketQueries once
+}
+
 func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Ticket, error) {
 	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
 	defer cancel()
@@ -138,27 +121,41 @@ func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Tick
 }
 ```
 
+Transactions group the concrete repositories in a `Transaction` struct, run through `TransactionManager.Transact`:
+
+```go
+// internal/ticket/repository/transaction_manager.go
+type Transaction struct {
+	TicketRepo *TicketRepository
+}
+```
+
+- Current: backed by `postgrex.RunInTx`.
+
 ---
 
-## 4. usecase
+## 3. usecase
 
-One file per implemented use case; single `Usecase` interface plus `Service` struct in `usecase/usecase.go` (what mockery mocks).
+One file per implemented use case, plus the concrete `Usecase` struct in `usecase/usecase.go`. It takes the concrete repository and transaction manager plus client ports.
 
 **Rules:**
 
 - ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output`.
-- ✅ Infra failures wrap as `customerr.Integration(err)`.
-- ✅ Domain outcomes map: missing → `customerr.NotFound`, duplicate → `customerr.Conflict`, invalid → `customerr.Validation`.
-- ✅ Multi-repo writes go through `core.TransactionManager[repository.Transaction]` (`postgrex.RunInTx`).
-- ✅ Contract is the `Usecase` interface in `usecase.go`, implemented by `*Service` built with `New(...)`.
-- ❌ No HTTP/`net/http` types in the usecase. ❌ No `*sqlx.DB` — repositories only.
+- ✅ Infra failures wrap as integration errors.
+- ✅ Domain outcomes map: missing → `NotFound`, duplicate → `Conflict`, invalid → `Validation`.
+- ✅ Multi-repo writes go through the transaction manager.
+- ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
+- ❌ No interface on the usecase — a single implementation needs no port.
+- ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
+
+- Current: `customerr.Validation / NotFound / Conflict / Integration`; transaction via `repository.TransactionManager.Transact`.
 
 Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
 
 Simple case — `create_ticket.go`:
 
 ```go
-func (u *Service) CreateTicket(
+func (u *Usecase) CreateTicket(
 	ctx context.Context,
 	input CreateTicketInput,
 ) (CreateTicketOutput, error) {
@@ -178,7 +175,7 @@ func (u *Service) CreateTicket(
 Transactional case — `assign_ticket.go`:
 
 ```go
-func (u *Service) AssignTicket(
+func (u *Usecase) AssignTicket(
 	ctx context.Context,
 	input AssignTicketInput,
 ) error {
@@ -209,17 +206,19 @@ func (u *Service) AssignTicket(
 
 ---
 
-## 5. http/endpoint
+## 4. http/endpoint
 
-Parse via `httpx.ParseRequest`, call the use case, answer with `httpx.Write*Response` or `httpx.WriteError`.
+One delivery mechanism. Parse the request, call the use case, write the response.
 
 **Rules:**
 
-- ✅ A request DTO per endpoint with `validate:` tags (`required,min=1`).
-- ✅ Setters answer `httpx.WriteCreatedResponse`, reads `httpx.WriteOKResponse`.
-- ✅ Every error goes to `httpx.WriteError` (maps `customerr` type → HTTP status).
-- ✅ Path params via `httpx.GetPathParam`.
-- ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll JSON decode/validate.
+- ✅ A request DTO per endpoint with validation tags.
+- ✅ Setters answer "created", reads answer "ok".
+- ✅ Every error goes to the shared error writer (maps typed error → transport status).
+- ✅ Path params via the shared helper.
+- ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll decode/validate.
+
+- Current: `httpx.ParseRequest`, `httpx.Write*Response` / `httpx.WriteError`, `httpx.GetPathParam`, `validate:"required,min=1"`, chi handler `func(w http.ResponseWriter, r *http.Request)`.
 
 Source: [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
 
@@ -255,15 +254,17 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 
 ---
 
-## 6. http/route.go
+## 5. http/route.go
 
-Register under `/api/v1/...` (the router is mounted at `/api`; group resource routes under `/v1/...`).
+Register versioned routes under one registrar per mechanism.
 
 **Rules:**
 
-- ✅ `r.Route("/v1/<resources>", ...)` grouping routes per aggregate.
-- ✅ `RegisterRoutes` is passed the `*endpoint.Endpoint` built by `SetupEndpoints`.
-- ❌ No usecase calls in the router — routing only.
+- ✅ Group routes per aggregate under `/v1/...`.
+- ✅ Registrar receives the built endpoint; routing only.
+- ❌ No usecase calls in the router.
+
+- Current: router mounted at `/api`, chi `r.Route("/v1/<resources>")`, `RegisterRoutes(r, ep)`.
 
 Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
 
@@ -281,24 +282,26 @@ func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
 
 ---
 
-## 7. Wiring — `<domain>/<domain>.go`
+## 6. Wiring — `<domain>/<domain>.go`
 
-Composition root. Build the transaction manager, postgres repositories, usecases, endpoints; register routes.
+Composition root. Build the transaction manager, repositories, usecases, endpoints; register routes.
 
 **Rules:**
 
-- ✅ One function `New(r chi.Router, db *sqlx.DB) error` per module.
-- ✅ Ports are implemented by postgres/console adapters; no `mockery` mocks here.
+- ✅ One constructor per module.
+- ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in endpoints/usecases — declarative, top-down.
+
+- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `console.NewNotifier()`.
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 ```go
 // internal/ticket/ticket.go
 func New(r chi.Router, db *sqlx.DB) error {
-	txManager := postgres.NewTransactionManager(db)
+	txManager := repository.NewTransactionManager(db)
 
-	ticketRepo, err := postgres.NewTicketRepository(db)
+	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return err
 	}
@@ -319,13 +322,13 @@ Source: [internal/ticket/public.go](../../internal/ticket/public.go)
 
 ```go
 // internal/ticket/public.go
-func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
-	ticketRepo, err := postgres.NewTicketRepository(db)
+func NewTicketReader(db *sqlx.DB) (public.Reader, error) {
+	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return nil, err
 	}
 
-	uc := usecase.New(ticketRepo, postgres.NewTransactionManager(db), console.NewNotifier())
+	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), console.NewNotifier())
 
 	return public.NewTicketReader(uc), nil
 }

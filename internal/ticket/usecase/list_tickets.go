@@ -21,7 +21,7 @@ type ListTicketsOutput struct {
 	TotalPages int
 }
 
-func (u *Service) ListTickets(ctx context.Context, input ListTicketsInput) (ListTicketsOutput, error) {
+func (u *Usecase) ListTickets(ctx context.Context, input ListTicketsInput) (ListTicketsOutput, error) {
 	params := input.Params.Validate()
 
 	tickets, total, err := u.ticketRepo.ListByStatus(ctx, input.Status, params)

@@ -1,4 +1,4 @@
-package postgres
+package repository
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/charmingruby/lab/internal/platform/postgrex"
 	"github.com/charmingruby/lab/internal/shared/core"
 	"github.com/charmingruby/lab/internal/ticket/model"
-	"github.com/charmingruby/lab/internal/platform/postgrex"
 )
 
 const (
