@@ -78,8 +78,10 @@ func TestCreateTicketV1(t *testing.T) {
 			tt.wantBodyCheck(t, body)
 
 			if tt.wantPersisted {
+				id, ok := body["id"].(string)
+				require.True(t, ok, "expected string id in response body")
 				ticket, err := uc.GetTicket(context.Background(), usecase.GetTicketInput{
-					TicketID: body["id"].(string),
+					TicketID: id,
 				})
 				require.NoError(t, err)
 				assert.Equal(t, "Test Ticket", ticket.Title)

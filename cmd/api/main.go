@@ -13,10 +13,10 @@ import (
 
 	"github.com/charmingruby/lab/config"
 	"github.com/charmingruby/lab/internal/platform/httpx"
-	"github.com/charmingruby/lab/internal/ticket"
 	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/platform/postgrex"
 	"github.com/charmingruby/lab/internal/platform/validator"
+	"github.com/charmingruby/lab/internal/ticket"
 )
 
 const shutdownTimeout = 30 * time.Second

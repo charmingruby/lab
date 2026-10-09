@@ -15,9 +15,9 @@ import (
 )
 
 type Notifier struct {
-	mu   sync.Mutex
-	sent []client.SendNotificationInput
 	err  error
+	sent []client.SendNotificationInput
+	mu   sync.Mutex
 }
 
 func NewNotifier() *Notifier {

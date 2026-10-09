@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/platform/logging"
+	"github.com/charmingruby/lab/internal/shared/customerr"
 )
 
 type ErrorResponse struct {
