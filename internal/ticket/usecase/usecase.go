@@ -5,9 +5,6 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/repository"
 )
 
-// Usecase orchestrates one business action per method. It is a concrete
-// struct on purpose: there is a single implementation, so an interface
-// would only serve mocks — and there are none.
 type Usecase struct {
 	ticketRepo *repository.TicketRepository
 	txManager  *repository.TransactionManager

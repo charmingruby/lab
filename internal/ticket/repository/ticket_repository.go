@@ -51,9 +51,6 @@ var ticketQueries = map[string]string{
 			deleted_at IS NULL`,
 }
 
-// TicketRepository is the ticket golden source. It is concrete on purpose:
-// postgres is effectively immutable here, so there is no port interface to
-// mock or swap. External integrations stay behind client ports instead.
 type TicketRepository struct {
 	db    postgrex.Querier
 	stmts map[string]*sqlx.Stmt

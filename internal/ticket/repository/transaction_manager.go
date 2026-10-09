@@ -6,13 +6,10 @@ import (
 	"github.com/charmingruby/lab/internal/platform/postgrex"
 )
 
-// Transaction groups the repositories available inside a transaction.
 type Transaction struct {
 	TicketRepo *TicketRepository
 }
 
-// TransactionManager runs multi-repo writes atomically. Concrete like the
-// repository itself — the golden source has no port interface.
 type TransactionManager struct {
 	db *sqlx.DB
 }

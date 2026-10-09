@@ -1,10 +1,3 @@
-// Package memory holds in-memory fakes for outbound client ports.
-// Fakes implement the port with real state — they are not mocks:
-// no call expectations, just behavior the usecase can observe.
-//
-//	uc := usecase.New(repo, txManager, memory.NewNotifier())
-//	_ = uc.AssignTicket(ctx, input)
-//	require.Len(t, notifier.Sent(), 1)
 package memory
 
 import (
