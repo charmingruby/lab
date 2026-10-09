@@ -102,7 +102,10 @@ func resetDatabase(t *testing.T, db *sqlx.DB) {
 	t.Helper()
 
 	var tables []string
-	err := db.Select(&tables, `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('schema_migrations')`)
+	err := db.Select(
+		&tables,
+		`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('schema_migrations')`,
+	)
 	require.NoError(t, err)
 
 	if len(tables) == 0 {
