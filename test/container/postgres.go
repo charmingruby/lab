@@ -2,12 +2,17 @@ package container
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"strings"
 	"testing"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -45,10 +50,10 @@ func StartPostgres(t *testing.T) *sqlx.DB {
 	connStr, err := ctr.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
+	runMigrations(t, connStr)
+
 	db, err := postgrex.Connect(ctx, connStr)
 	require.NoError(t, err)
-
-	runMigrations(t, db)
 
 	t.Cleanup(func() {
 		_ = db.Close()
@@ -61,37 +66,56 @@ func StartPostgres(t *testing.T) *sqlx.DB {
 func connectExternal(t *testing.T, ctx context.Context, url string) *sqlx.DB {
 	t.Helper()
 
+	runMigrations(t, url)
+
 	db, err := postgrex.Connect(ctx, url)
 	require.NoError(t, err)
 
-	runMigrations(t, db)
-
-	_, err = db.Exec("TRUNCATE tickets")
-	require.NoError(t, err)
+	resetDatabase(t, db)
 
 	t.Cleanup(func() {
-		_, _ = db.Exec("TRUNCATE tickets")
+		resetDatabase(t, db)
 		_ = db.Close()
 	})
 
 	return db
 }
 
-func runMigrations(t *testing.T, db *sqlx.DB) {
+func runMigrations(t *testing.T, databaseURL string) {
 	t.Helper()
 
-	files, err := filepath.Glob(filepath.Join(repoRoot(t), "db", "migration", "*.up.sql"))
+	m, err := migrate.New(
+		"file://"+filepath.Join(repoRoot(t), "db", "migration"),
+		databaseURL,
+	)
 	require.NoError(t, err)
-	require.NotEmpty(t, files, "no migration files found")
-	sort.Strings(files)
 
-	for _, f := range files {
-		sql, err := os.ReadFile(f)
-		require.NoError(t, err)
+	defer func() {
+		_, _ = m.Close()
+	}()
 
-		_, err = db.Exec(string(sql))
-		require.NoError(t, err, "migration %s", filepath.Base(f))
+	err = m.Up()
+	require.True(t, err == nil || errors.Is(err, migrate.ErrNoChange), "migrate up: %v", err)
+}
+
+func resetDatabase(t *testing.T, db *sqlx.DB) {
+	t.Helper()
+
+	var tables []string
+	err := db.Select(&tables, `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('schema_migrations')`)
+	require.NoError(t, err)
+
+	if len(tables) == 0 {
+		return
 	}
+
+	quoted := make([]string, len(tables))
+	for i, table := range tables {
+		quoted[i] = fmt.Sprintf(`"%s"`, table)
+	}
+
+	_, err = db.Exec(fmt.Sprintf("TRUNCATE %s RESTART IDENTITY CASCADE", strings.Join(quoted, ", ")))
+	require.NoError(t, err)
 }
 
 func repoRoot(t *testing.T) string {
