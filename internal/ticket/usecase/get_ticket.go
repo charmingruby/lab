@@ -11,7 +11,7 @@ type GetTicketInput struct {
 	TicketID string
 }
 
-func (u *Service) GetTicket(ctx context.Context, input GetTicketInput) (*model.Ticket, error) {
+func (u *Usecase) GetTicket(ctx context.Context, input GetTicketInput) (*model.Ticket, error) {
 	ticket, err := u.ticketRepo.FindByID(ctx, input.TicketID)
 	if err != nil {
 		return nil, customerr.Integration(err)

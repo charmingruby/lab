@@ -6,7 +6,7 @@ A module never imports another module's use case. To read another module's data,
 - **`<domain>/public/`** — the adapter: a thin struct over a use case that forwards calls into the port shape (e.g. `public.NewTicketReader(getTicket)`, whose `GetTicketStatus` delegates to `getTicket.GetTicket`).
 - **`<domain>/public.go`** — the assembly: a module-level constructor (e.g. `NewTicketReader(db)`) that builds repositories + use case and returns the adapter typed as the `client` port.
 
-The consumer codes only against the produced `client` port. Mocks are generated from it into `test/<domain>/mocks`.
+The consumer codes only against the produced `client` port. In tests the port is backed by the real public adapter over a real database — never a mock.
 
 ## Example — `ticket` exposes `TicketReader` (illustration — same shape for any `<domain>`)
 
@@ -22,10 +22,10 @@ type TicketReader interface {
 
 ```go
 type TicketReader struct {
-	uc usecase.Usecase
+	uc *usecase.Usecase
 }
 
-func NewTicketReader(uc usecase.Usecase) *TicketReader {
+func NewTicketReader(uc *usecase.Usecase) *TicketReader {
 	return &TicketReader{uc: uc}
 }
 
@@ -43,23 +43,22 @@ func (r *TicketReader) GetTicketStatus(ctx context.Context, ticketID string) (st
 
 ```go
 func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
-	ticketRepo, err := postgres.NewTicketRepository(db)
+	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return nil, err
 	}
 
-	uc := usecase.New(ticketRepo, postgres.NewTransactionManager(db), console.NewNotifier())
+	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), console.NewNotifier())
 
 	return public.NewTicketReader(uc), nil
 }
 ```
 
-**4. The consumer** — depends only on the client port, mocked from it (`test/ticket/mocks/`):
+**4. The consumer** — depends only on the client port, backed in tests by the real adapter (`ticket.NewTicketReader(db)` over `container.StartPostgres(t)`):
 
 ```go
-ticketReader := mocks.NewTicketReader(t)
-ticketReader.On("GetTicketStatus", mock.Anything, "ticket-123").
-	Return("open", nil)
+reader, err := ticket.NewTicketReader(container.StartPostgres(t))
+// reader.GetTicketStatus(ctx, ticketID) hits the real stack
 ```
 
 ❌ Never import another module's `usecase`, `repository`, or `model` — depend on its `client` port instead.

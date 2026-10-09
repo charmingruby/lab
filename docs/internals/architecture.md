@@ -12,8 +12,7 @@ cmd/api/main.go
         → endpoint (parses request, calls usecase)
           → usecase (business logic, transactions)
             → model (invariants, state changes)
-            → repository/port (interface)
-              → repository/postgres (prepared statements)
+            → repository (concrete postgres, prepared statements)
             → client/port (interface, if cross-domain or external)
               → client/<adapter>/ (concrete implementation)
           → httpx.Write*Response → HTTP response
@@ -35,8 +34,8 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `http/route.go` — registers versioned routes
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
-  - `repository/` — persistence port (interface), implementations in `postgres/`
-  - `client/` — outbound ports (interfaces), adapters in subdirectories
+  - `repository/` — the golden source, concrete postgres (no interface — postgres is effectively immutable, swapping it is trivial when needed). Single-repo writes need no explicit transaction; the repository handles it.
+  - `client/` — outbound ports (interfaces) plus adapters in subdirectories. Ports exist here as an anti-corruption layer: external providers are easily swapped, so usecases depend on the interface and tests use the `memory/` fake.
 - `internal/shared/` — shared domain language: domain types (e.g. base model, pagination, transactions), typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
 - `internal/platform/` — internal infrastructure with zero domain awareness: raw external clients and transport/config helpers (e.g. HTTP, logging, DB, validation). See the directory for the current set.
 - `pkg/` — reserved for code exposed to the outside world (e.g. public API contract).
@@ -69,18 +68,18 @@ Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr
 
 ## Transaction safety
 
-Multi-repo writes (e.g., updating two repositories atomically) go through `core.TransactionManager[repository.Transaction]`. The transaction struct holds the repo interfaces needed inside the transaction. Single-repo writes do not need explicit transactions — the postgres adapter handles it.
+Multi-repo writes (e.g., updating two repositories atomically) go through `repository.TransactionManager` with a `repository.Transaction` holding the concrete repositories needed inside the transaction. Single-repo writes do not need explicit transactions — the repository handles it.
 
-Source: [internal/shared/core/transaction.go](../../internal/shared/core/transaction.go), [internal/ticket/repository/postgres/transaction_manager.go](../../internal/ticket/repository/postgres/transaction_manager.go)
+Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticket/repository/transaction_manager.go)
 
 ## Domain structure
 
 A domain is a **ports and adapters** module in `internal/<domain>`, one dependency spine:
 
 ```
-<protocol> → usecase → repository (port) → repository/postgres
-                              → client (port)   → client/console
-                              → model
+<protocol> → usecase → repository (concrete postgres)
+                      → client (port)   → client/console
+                      → model
 ```
 
 ### Delivery mechanism layout
@@ -96,7 +95,7 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 ### Repository and client shape
 
-`repository/` — template for any port with multiple backends: interface at the root (e.g. `repository/repository.go`), each implementation in its own subpackage (e.g. `repository/postgres/`). Same shape for `client/` (port e.g. `client/notifier.go`, adapter e.g. `client/console/`) and for messaging adapters inside `delivery/queue/` (e.g. `queue/kafka`, `queue/sqs`).
+`repository/` is concrete postgres — no port interface, no subpackages: the golden source is effectively immutable, and re-introducing an interface when a swap is actually needed is trivial. `client/` keeps the port-adapter split (port e.g. `client/notifier.go`, adapters e.g. `client/console/`, `client/memory/`): external providers are easily swapped, so that anti-corruption layer pays off. Same adapter-per-subpackage shape for messaging adapters inside `delivery/queue/` (e.g. `queue/kafka`, `queue/sqs`).
 
 ### External dependencies
 

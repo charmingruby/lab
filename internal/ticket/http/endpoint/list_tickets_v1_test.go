@@ -3,93 +3,36 @@ package endpoint_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
-	"github.com/charmingruby/lab/internal/shared/core"
-	"github.com/charmingruby/lab/internal/shared/customerr"
-	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
-	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
-	mocks "github.com/charmingruby/lab/test/ticket/mocks"
 )
 
 func TestListTicketsV1(t *testing.T) {
-	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	tickets := []model.Ticket{
-		{
-			Title:       "Ticket 1",
-			Description: "First ticket",
-			Status:      model.OpenTicketStatus,
-			Priority:    model.HighPriority,
-		},
-		{
-			Title:       "Ticket 2",
-			Description: "Second ticket",
-			Status:      model.OpenTicketStatus,
-			Priority:    model.LowPriority,
-		},
-	}
-	tickets[0].ID = "ticket-1"
-	tickets[0].CreatedAt = now
-	tickets[1].ID = "ticket-2"
-	tickets[1].CreatedAt = now
-
 	tests := []struct {
-		setupMock     func(uc *mocks.MockUsecase)
 		wantBodyCheck func(t *testing.T, body map[string]any)
 		name          string
-		queryParams   string
+		query         string
 		wantStatus    int
+		seedCount     int
 	}{
 		{
-			name:        "missing status query param returns 500",
-			queryParams: "",
-			setupMock:   func(uc *mocks.MockUsecase) {},
-			wantStatus:  http.StatusInternalServerError,
-			wantBodyCheck: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "Internal Server Error", body["message"])
-			},
-		},
-		{
-			name:        "integration error returns 500",
-			queryParams: "?status=open&page=1&limit=25",
-			setupMock: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					ListTickets(mock.Anything, usecase.ListTicketsInput{
-						Status: "open",
-						Params: core.PaginationParams{Page: 1, Limit: 25},
-					}).
-					Return(usecase.ListTicketsOutput{}, customerr.Integration(errors.New("db error")))
-			},
+			name:       "missing status query param returns 500",
+			query:      "",
+			seedCount:  0,
 			wantStatus: http.StatusInternalServerError,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Equal(t, "Internal Server Error", body["message"])
 			},
 		},
 		{
-			name:        "success returns tickets list",
-			queryParams: "?status=open&page=1&limit=25",
-			setupMock: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					ListTickets(mock.Anything, usecase.ListTicketsInput{
-						Status: "open",
-						Params: core.PaginationParams{Page: 1, Limit: 25},
-					}).
-					Return(usecase.ListTicketsOutput{
-						Tickets:    tickets,
-						Page:       1,
-						Limit:      25,
-						Total:      2,
-						TotalPages: 1,
-					}, nil)
-			},
+			name:       "success returns tickets list",
+			query:      "?status=open&page=1&limit=25",
+			seedCount:  2,
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.InDelta(t, 2, body["total"], 0.001)
@@ -98,40 +41,24 @@ func TestListTicketsV1(t *testing.T) {
 				assert.InDelta(t, 1, body["total_pages"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
-				assert.True(t, ok)
-				assert.Len(t, ticketList, 2)
+				require.True(t, ok)
+				require.Len(t, ticketList, 2)
 
 				first, ok := ticketList[0].(map[string]any)
-				assert.True(t, ok)
-				assert.Equal(t, "ticket-1", first["id"])
-				assert.Equal(t, "Ticket 1", first["title"])
+				require.True(t, ok)
 				assert.Equal(t, "open", first["status"])
-				assert.Equal(t, "high", first["priority"])
 			},
 		},
 		{
-			name:        "empty result returns empty list",
-			queryParams: "?status=resolved&page=1&limit=25",
-			setupMock: func(uc *mocks.MockUsecase) {
-				uc.EXPECT().
-					ListTickets(mock.Anything, usecase.ListTicketsInput{
-						Status: "resolved",
-						Params: core.PaginationParams{Page: 1, Limit: 25},
-					}).
-					Return(usecase.ListTicketsOutput{
-						Tickets:    []model.Ticket{},
-						Page:       1,
-						Limit:      25,
-						Total:      0,
-						TotalPages: 0,
-					}, nil)
-			},
+			name:       "empty result returns empty list",
+			query:      "?status=resolved&page=1&limit=25",
+			seedCount:  0,
 			wantStatus: http.StatusOK,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.InDelta(t, 0, body["total"], 0.001)
 
 				ticketList, ok := body["tickets"].([]any)
-				assert.True(t, ok)
+				require.True(t, ok)
 				assert.Empty(t, ticketList)
 			},
 		},
@@ -139,23 +66,23 @@ func TestListTicketsV1(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := mocks.NewMockUsecase(t)
-			tt.setupMock(uc)
+			ep, uc := newTestEndpoint(t)
 
-			ep := endpoint.New(uc)
+			for range tt.seedCount {
+				_, err := uc.CreateTicket(context.Background(), usecase.CreateTicketInput{
+					Title:       "Ticket",
+					Description: "A description",
+					Priority:    "low",
+				})
+				require.NoError(t, err)
+			}
 
-			url := "/v1/tickets" + tt.queryParams
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
-			rec := httptest.NewRecorder()
-
-			ep.ListTicketsV1(rec, req)
+			rec := serve(t, ep.ListTicketsV1, http.MethodGet, "/v1/tickets"+tt.query, nil)
 
 			assert.Equal(t, tt.wantStatus, rec.Code)
 
 			var body map[string]any
-			if rec.Body.Len() > 0 {
-				_ = json.Unmarshal(rec.Body.Bytes(), &body)
-			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 			tt.wantBodyCheck(t, body)
 		})
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmingruby/lab/internal/ticket/client/console"
 	"github.com/charmingruby/lab/internal/ticket/http"
-	"github.com/charmingruby/lab/internal/ticket/repository/postgres"
+	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
@@ -14,9 +14,9 @@ func New(
 	r chi.Router,
 	db *sqlx.DB,
 ) error {
-	txManager := postgres.NewTransactionManager(db)
+	txManager := repository.NewTransactionManager(db)
 
-	ticketRepo, err := postgres.NewTicketRepository(db)
+	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return err
 	}

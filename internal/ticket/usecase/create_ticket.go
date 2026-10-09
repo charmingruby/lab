@@ -13,7 +13,7 @@ type CreateTicketOutput struct {
 	ID string
 }
 
-func (u *Service) CreateTicket(
+func (u *Usecase) CreateTicket(
 	ctx context.Context,
 	input CreateTicketInput,
 ) (CreateTicketOutput, error) {

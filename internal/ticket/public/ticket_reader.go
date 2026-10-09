@@ -7,10 +7,10 @@ import (
 )
 
 type TicketReader struct {
-	uc usecase.Usecase
+	uc *usecase.Usecase
 }
 
-func NewTicketReader(uc usecase.Usecase) *TicketReader {
+func NewTicketReader(uc *usecase.Usecase) *TicketReader {
 	return &TicketReader{uc: uc}
 }
 

@@ -14,7 +14,7 @@ type AssignTicketInput struct {
 	AssigneeID string
 }
 
-func (u *Service) AssignTicket(
+func (u *Usecase) AssignTicket(
 	ctx context.Context,
 	input AssignTicketInput,
 ) error {
