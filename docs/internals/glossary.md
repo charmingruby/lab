@@ -61,7 +61,7 @@ Concrete reader over a usecase for cross-domain reads; consumer owns the interfa
 
 #### Flat layout
 
-Default for one mechanism (`http/endpoint/` + `route.go`). Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+Default for one mechanism (`http/endpoint/` with route registration in `New`). Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Nested layout
 

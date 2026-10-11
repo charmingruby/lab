@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/platform/logging"
@@ -29,5 +30,5 @@ func newTestEndpoint(t *testing.T) (*endpoint.Endpoint, *usecase.Usecase) {
 
 	uc := usecase.New(repo, repository.NewTransactionManager(db), notifier.NewMemory())
 
-	return endpoint.New(uc), uc
+	return endpoint.New(chi.NewRouter(), uc), uc
 }

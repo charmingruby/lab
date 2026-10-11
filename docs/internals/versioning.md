@@ -7,9 +7,9 @@ Same shape for any `<domain>` and any delivery mechanism — current illustratio
 - **Every protocol versions at the caller-facing boundary**: HTTP registers a new route, gRPC a new service, messaging a new event/queue version for producers and consumers alike.
 - **Never version `model/`, `usecase/`, or `repository/`.** These stay single-version regardless of how many API versions call them.
 
-- Current: `http/endpoint/create_ticket_v1.go` → `create_ticket_v2.go`, `http/route.go` maps `/v1/...` → `/v2/...`.
+- Current: `http/endpoint/create_ticket_v1.go` → `create_ticket_v2.go`, `http/endpoint/endpoint.go` maps `/v1/...` → `/v2/...`.
 
-Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/), [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
+Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/), [internal/ticket/http/endpoint/endpoint.go](../../internal/ticket/http/endpoint/endpoint.go)
 
 ## Example — v1 → v2
 
@@ -43,7 +43,7 @@ func (e *Endpoint) CreateTicketV2(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**3. [internal/ticket/http/route.go](../../internal/ticket/http/route.go)** — registers both until callers migrate, then drops v1 (current: chi):
+**3. [internal/ticket/http/endpoint/endpoint.go](../../internal/ticket/http/endpoint/endpoint.go)** — registers both until callers migrate, then drops v1 (current: chi):
 
 ```go
 r.Route("/v1/tickets", func(r chi.Router) {

@@ -209,7 +209,7 @@ func (u *Usecase) AssignTicket(
 
 ## 4. http/endpoint
 
-One delivery mechanism. Parse the request, call the use case, write the response.
+One delivery mechanism. Parse the request, call the use case, write the response. Route registration lives here too, in `New` — paths, verbs, and per-route middlewares stay next to the handlers they mount.
 
 **Rules:**
 
@@ -217,9 +217,25 @@ One delivery mechanism. Parse the request, call the use case, write the response
 - ✅ Setters answer "created", reads answer "ok".
 - ✅ Every error goes to the shared error writer (typed errors map to statuses per [architecture.md](./architecture.md#error-flow); missing path params use `httpx.WriteBadRequest`).
 - ✅ Path params via the shared helper.
+- ✅ Group routes per aggregate under `/v1/...` in `New(r chi.Router, uc *usecase.Usecase)`.
 - ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll decode/validate.
 
-Source: [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
+Source: [internal/ticket/http/endpoint/endpoint.go](../../internal/ticket/http/endpoint/endpoint.go), [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
+
+```go
+// internal/ticket/http/endpoint/endpoint.go
+func New(r chi.Router, uc *usecase.Usecase) *Endpoint {
+	ep := &Endpoint{uc: uc}
+
+	r.Route("/v1/tickets", func(r chi.Router) {
+		r.Post("/", ep.CreateTicketV1)
+		r.Get("/{id}", ep.GetTicketV1)
+		r.Patch("/{id}/assign", ep.AssignTicketV1)
+	})
+
+	return ep
+}
+```
 
 ```go
 // internal/ticket/http/endpoint/create_ticket_v1.go
@@ -253,42 +269,15 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 
 ---
 
-## 5. http/route.go
+## 5. Wiring — `<domain>/<domain>.go`
 
-Register versioned routes under one registrar per mechanism.
-
-**Rules:**
-
-- ✅ Group routes per aggregate under `/v1/...`.
-- ✅ Registrar receives the built endpoint; routing only.
-- ❌ No usecase calls in the router.
-
-- Current: chi `r.Route("/v1/<resources>")` with no path prefix, `RegisterRoutes(r, ep)`.
-
-Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
-
-```go
-// internal/ticket/http/route.go
-func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
-	r.Route("/v1/tickets", func(r chi.Router) {
-		r.Post("/", ep.CreateTicketV1)
-		r.Get("/{id}", ep.GetTicketV1)
-		r.Patch("/{id}/assign", ep.AssignTicketV1)
-	})
-}
-```
-
----
-
-## 6. Wiring — `<domain>/<domain>.go`
-
-Composition root. Build the transaction manager, repositories, usecases, endpoints; register routes.
+Composition root. Build the transaction manager, repositories, usecases; hand the router to the endpoint, which registers its own routes.
 
 **Rules:**
 
 - ✅ One constructor per module.
 - ✅ Concrete repository + client adapters wired here.
-- ❌ No wiring in endpoints/usecases — declarative, top-down.
+- ❌ No wiring in usecases — declarative, top-down.
 
 - Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `notifier.NewConsole()`.
 
@@ -304,11 +293,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 		return err
 	}
 
-	ep := http.SetupEndpoints(
-		usecase.New(ticketRepo, txManager, notifier.NewConsole()),
-	)
-
-	http.RegisterRoutes(r, ep)
+	endpoint.New(r, usecase.New(ticketRepo, txManager, notifier.NewConsole()))
 
 	return nil
 }

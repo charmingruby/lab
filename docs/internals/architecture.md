@@ -16,7 +16,7 @@ delivery → endpoint → usecase → model
 
 ## Domain wiring
 
-Each domain exposes one composition root in `<domain>.go` — it builds dependencies and registers routes. No wiring happens in endpoints or usecases. Cross-domain read assembly lives in the same file.
+Each domain exposes one composition root in `<domain>.go` — it builds dependencies and hands the router to the endpoint, which registers its own routes. No wiring happens in usecases. Cross-domain read assembly lives in the same file.
 
 - Current: `New(r chi.Router, db *sqlx.DB) error`, builds transaction manager, postgres repositories, usecases, endpoints.
 
@@ -28,8 +28,7 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 - `config/` — app config (`PORT`, `DATABASE_URL`), loaded from env.
 - `internal/<domain>/` — one ports-and-adapters module per bounded context.
   - `<domain>.go` — composition root (wires everything, including cross-domain read assembly)
-  - `http/endpoint/` — request DTO + handler (one delivery mechanism, see below)
-  - `http/route.go` — registers versioned routes
+  - `http/endpoint/` — request DTO + handler + versioned route registration (in `New`)
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
   - `repository/` — the golden source, concrete (no interface — swapping it is trivial when needed)
@@ -77,7 +76,7 @@ endpoint → usecase → repository (concrete golden source)
 
 A mechanism is any transport the domain speaks:
 
-- **One mechanism** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/` and `route.go`. No `delivery/` wrapper.
+- **One mechanism** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/`, which owns its route registration in `New`. No `delivery/` wrapper.
 - **Two or more mechanisms**: nested — introduce `delivery/` as the parent. Move the existing `http/` to `delivery/http/`. Add the new mechanism beside it: `delivery/grpc/`, `delivery/queue/`.
 
 Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
