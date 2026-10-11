@@ -9,16 +9,13 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/charmingruby/lab/internal/platform/postgrex"
-	"github.com/charmingruby/lab/internal/shared/core"
 	"github.com/charmingruby/lab/internal/ticket/model"
 )
 
 const (
-	createTicketQuery        = "create ticket"
-	findTicketByIDQuery      = "find ticket by id"
-	updateTicketQuery        = "update ticket"
-	listTicketByStatusQuery  = "list ticket by status"
-	countTicketByStatusQuery = "count ticket by status"
+	createTicketQuery   = "create ticket"
+	findTicketByIDQuery = "find ticket by id"
+	updateTicketQuery   = "update ticket"
 )
 
 var ticketQueries = map[string]string{
@@ -36,18 +33,6 @@ var ticketQueries = map[string]string{
 		SET status=$2, assignee_id=$3, updated_at=$4
 		WHERE
 			id=$1 AND
-			deleted_at IS NULL`,
-	listTicketByStatusQuery: `
-		SELECT * FROM tickets
-		WHERE
-			status=$1 AND
-			deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`,
-	countTicketByStatusQuery: `
-		SELECT COUNT(*) FROM tickets
-		WHERE
-			status=$1 AND
 			deleted_at IS NULL`,
 }
 
@@ -88,7 +73,7 @@ func (r *TicketRepository) statement(queryName string) (*sqlx.Stmt, error) {
 }
 
 func (r *TicketRepository) Create(ctx context.Context, ticket *model.Ticket) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
+	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultWriteTimeout)
 	defer cancel()
 
 	stmt, err := r.statement(createTicketQuery)
@@ -130,7 +115,7 @@ func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Tick
 }
 
 func (r *TicketRepository) Update(ctx context.Context, ticket *model.Ticket) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
+	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultWriteTimeout)
 	defer cancel()
 
 	stmt, err := r.statement(updateTicketQuery)
@@ -146,49 +131,4 @@ func (r *TicketRepository) Update(ctx context.Context, ticket *model.Ticket) err
 	)
 
 	return err
-}
-
-func (r *TicketRepository) ListByStatus(
-	ctx context.Context,
-	status string,
-	params core.PaginationParams,
-) ([]model.Ticket, int, error) {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
-	defer cancel()
-
-	stmt, err := r.statement(listTicketByStatusQuery)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	rows, err := stmt.QueryxContext(ctx, status, params.Limit, params.Offset())
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var tickets []model.Ticket
-	for rows.Next() {
-		var t model.Ticket
-		if err := rows.StructScan(&t); err != nil {
-			return nil, 0, err
-		}
-
-		tickets = append(tickets, t)
-	}
-
-	if rows.Err() != nil {
-		return nil, 0, rows.Err()
-	}
-
-	countStmt, err := r.statement(countTicketByStatusQuery)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var total int
-	if err := countStmt.QueryRowxContext(ctx, status).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	return tickets, total, nil
 }

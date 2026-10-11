@@ -1,6 +1,6 @@
 # Glossary
 
-This is a living glossary for the Go backend template. It explains what common terms mean in this codebase and where the code lives.
+Living index of terms. One line per term + where the rule lives. Rules live in their owner doc — this file never duplicates them.
 
 ## Table of contents
 
@@ -13,121 +13,77 @@ This is a living glossary for the Go backend template. It explains what common t
 
 #### Domain
 
-A bounded context in `internal/<domain>/`. Each domain is a self-contained module with its own model, usecase, repository, and delivery mechanism(s). Domains never import each other's internals — they communicate through the producer's `public` port.
-
-Source: [architecture.md](./architecture.md), [internal/ticket/](../../internal/ticket/)
+A bounded context in `internal/<domain>/`. Never imports another domain's internals. Rule: [architecture.md](./architecture.md), example: [internal/ticket/](../../internal/ticket/)
 
 #### Model
 
-The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Constructors return `(*Model, error)` when there are invariants to enforce.
-
-- Current: builds on `core.Model` for base fields and `Touch` for state mutation.
-
-Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go), [internal/shared/core/model.go](../../internal/shared/core/model.go)
+Entity with constructor invariants + verb state-change methods. Rule: [coding-patterns.md](./coding-patterns.md#1-model)
 
 #### Usecase
 
-The application service that orchestrates one business action. It coordinates models, repositories, and clients. Input/output structs live in the usecase file (`<Verb><Resource>Input` / `<Verb><Resource>Output`). Usecases never import HTTP or SQL types.
-
-Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
+One business action; orchestrates model + repository + client ports. Rule: [coding-patterns.md](./coding-patterns.md#3-usecase)
 
 #### Repository
 
-The golden source for a domain's own data — a concrete struct, not an interface. One struct per aggregate, methods named by business meaning. All methods take `context.Context` first. Not-found returns `(nil, nil)`. There is no port here on purpose: the golden source is stable, and introducing an interface on the day a swap is needed is trivial.
-
-- Current: postgres.
-
-Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
+Concrete golden source, no interface. Rule: [coding-patterns.md](./coding-patterns.md#2-repository-golden-source-concrete)
 
 #### Client (outbound port)
 
-An outbound port — the interface a domain consumes to call external systems (notifier, storage). Exposed reads for other domains never live here — those belong to `public/`. Ports exist here as an anti-corruption layer for swappable providers.
-
-Source: [internal/ticket/client/](../../internal/ticket/client/)
+Interface a domain consumes for external systems. Shape: [external-integrations.md](./external-integrations.md#shape-canonical)
 
 #### Adapter
 
-The concrete implementation behind a client port. A console notifier is an adapter for the notification client port; an in-memory notifier is the test adapter for the same port. Adapters live beside their port in a subdirectory. The repository is not an adapter — it has no port.
-
-Source: [internal/ticket/client/console/](../../internal/ticket/client/console/), [internal/ticket/client/memory/](../../internal/ticket/client/memory/)
+Concrete implementation behind a client port. Shape: [external-integrations.md](./external-integrations.md#shape-canonical)
 
 #### Endpoint
 
-The handler for one delivery mechanism that parses a request, calls a usecase, and writes a response. One DTO per endpoint with validation tags. Endpoints never contain business logic.
-
-- Current: HTTP handler via `httpx.ParseRequest` / `httpx.Write*Response`.
-
-Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/)
+Handler that parses, calls usecase, writes response. Rule: [coding-patterns.md](./coding-patterns.md#4-httpendpoint)
 
 ## Ports and adapters
 
 #### Port
 
-An interface that decouples the usecase from an external implementation. Used only for outbound boundaries (`client/`). The golden source has no port — `repository/` is concrete.
-
-- Current: e.g. `client/notifier.go`.
-
-Source: [internal/ticket/client/notifier.go](../../internal/ticket/client/notifier.go)
+Interface decoupling usecase from externals; outbound only. Shape: [external-integrations.md](./external-integrations.md#shape-canonical)
 
 #### Delivery mechanism
 
-Any transport a domain speaks: HTTP, gRPC, queue consumer, queue producer. One mechanism = flat layout (`http/endpoint/`, `http/route.go`). Two or more = nested under `delivery/`. Messaging (queues) is always a delivery mechanism, never a client integration.
-
-Source: [architecture.md](./architecture.md)
+Any transport a domain speaks (HTTP, gRPC, queue). Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Dependency spine
 
-The layered dependency flow within a domain. Canonical definition lives in [architecture.md](./architecture.md#domain-structure) — do not duplicate the diagram here.
-
-Data flows right-to-left: the usecase calls the concrete repository and the client ports, the endpoint depends on the usecase. Nothing crosses layers in the wrong direction.
-
-Source: [architecture.md](./architecture.md), [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
+Layered flow within a domain. Canonical diagram: [architecture.md](./architecture.md#domain-structure)
 
 #### Public adapter
 
-A thin struct over a usecase that exposes a read port for cross-domain reads. Port + adapter live together in `<domain>/public/`. Assembled in `<domain>/public.go`, which builds repositories + usecase and returns the adapter typed as the public port.
-
-Source: [internal/ticket/public.go](../../internal/ticket/public.go), [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go)
+Concrete reader over a usecase for cross-domain reads; consumer owns the interface. Rule: [cross-module-reads.md](./cross-module-reads.md)
 
 ## Delivery mechanisms
 
 #### Flat layout
 
-The default when a domain has only one delivery mechanism (typically HTTP). `internal/<domain>/http/` holds `endpoint/` and `route.go`. No `delivery/` wrapper.
-
-Source: [internal/ticket/http/](../../internal/ticket/http/)
+Default for one mechanism (`http/endpoint/` + `route.go`). Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Nested layout
 
-Used when a domain has two or more delivery mechanisms. Introduce `delivery/` as the parent. Move existing `http/` to `delivery/http/`. Add new mechanisms beside it: `delivery/grpc/`, `delivery/queue/`.
-
-Source: [architecture.md](./architecture.md)
+For two or more mechanisms under `delivery/`. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Transaction manager
 
-Wraps multi-repo writes in one atomic unit. A concrete `repository.TransactionManager` taking a `repository.Transaction` with the repositories needed inside the transaction.
-
-- Current: backed by `postgrex.RunInTx`.
-
-Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticket/repository/transaction_manager.go)
+Atomic unit for multi-repo writes and read-modify-write. Rule: [architecture.md](./architecture.md#transaction-safety)
 
 ## Cross-cutting
 
 #### shared
 
-Shared domain language in `internal/shared/`: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set — do not treat this doc as inventory.
-
-Source: [internal/shared/](../../internal/shared/)
+Domain types, typed errors, ports + adapters used by 2+ domains. See directory: [internal/shared/](../../internal/shared/)
 
 #### platform
 
-Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers. Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set — do not treat this doc as inventory.
-
-Source: [internal/platform/](../../internal/platform/)
+Raw external clients + transport helpers, zero domain awareness. App config is the exception in `config/`. See directory: [internal/platform/](../../internal/platform/)
 
 #### pkg (reserved)
 
-Reserved for code exposed to the outside world (e.g. public API contract). Absent in this repo — do not use it for internal infra.
+Code exposed to the outside world. Absent here — not for internal infra.
 
 ## Practical shortcuts
 
@@ -135,4 +91,4 @@ Reserved for code exposed to the outside world (e.g. public API contract). Absen
 - If you see `adapter`, think "concrete implementation behind a client port."
 - If you see `usecase`, think "one business action, orchestrates everything."
 - If you see `delivery`, think "transport the domain speaks (HTTP, gRPC, queue)."
-- If you see `public.go`, think "cross-domain read assembly."
+- If you see `<domain>.go`, think "module wiring + cross-domain read assembly."

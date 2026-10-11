@@ -5,12 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/charmingruby/lab/internal/platform/validator"
-	"github.com/charmingruby/lab/internal/shared/core"
 )
 
 var (
@@ -29,7 +25,7 @@ func ParseRequest[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 		return nil, err
 	}
 
-	val := validator.ValidatorFromContext(r.Context())
+	val := validatorFromContext(r.Context())
 	if err := val.Validate(obj); err != nil {
 		WriteResponse(w, http.StatusBadRequest, map[string]string{
 			"message": fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
@@ -57,25 +53,4 @@ func GetQueryParam(r *http.Request, key string) (string, error) {
 	}
 
 	return param, nil
-}
-
-func GetPaginationParams(r *http.Request) core.PaginationParams {
-	params := core.PaginationParams{
-		Page:  1,
-		Limit: core.DefaultPageSize,
-	}
-
-	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil {
-			params.Page = page
-		}
-	}
-
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if limit, err := strconv.Atoi(limitStr); err == nil {
-			params.Limit = limit
-		}
-	}
-
-	return params.Validate()
 }

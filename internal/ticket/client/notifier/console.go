@@ -1,4 +1,4 @@
-package console
+package notifier
 
 import (
 	"context"
@@ -7,13 +7,13 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/client"
 )
 
-type Notifier struct{}
+type Console struct{}
 
-func NewNotifier() *Notifier {
-	return &Notifier{}
+func NewConsole() *Console {
+	return &Console{}
 }
 
-func (n *Notifier) Send(ctx context.Context, input client.SendNotificationInput) error {
+func (n *Console) Send(ctx context.Context, input client.SendNotificationInput) error {
 	logging.LoggerFromContext(ctx).Info("notification sent",
 		"assignee_id", input.AssigneeID,
 		"message", input.Message,

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/platform/logging"
-	"github.com/charmingruby/lab/internal/ticket/client/memory"
+	"github.com/charmingruby/lab/internal/ticket/client/notifier"
 	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 	"github.com/charmingruby/lab/test/container"
@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 type testService struct {
 	uc       *usecase.Usecase
 	repo     *repository.TicketRepository
-	notifier *memory.Notifier
+	notifier *notifier.Memory
 }
 
 func newTestService(t *testing.T) testService {
@@ -33,12 +33,12 @@ func newTestService(t *testing.T) testService {
 	repo, err := repository.NewTicketRepository(db)
 	require.NoError(t, err)
 
-	notifier := memory.NewNotifier()
+	ntf := notifier.NewMemory()
 
 	return testService{
-		uc:       usecase.New(repo, repository.NewTransactionManager(db), notifier),
+		uc:       usecase.New(repo, repository.NewTransactionManager(db), ntf),
 		repo:     repo,
-		notifier: notifier,
+		notifier: ntf,
 	}
 }
 

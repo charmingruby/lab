@@ -25,6 +25,10 @@ func WriteEmptyResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func WriteBadRequest(w http.ResponseWriter, r *http.Request, err error) {
+	WriteError(w, r, customerr.Validation(err.Error()))
+}
+
 func WriteResponse(w http.ResponseWriter, status int, v any) {
 	if v == nil {
 		w.WriteHeader(status)

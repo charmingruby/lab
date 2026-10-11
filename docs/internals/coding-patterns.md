@@ -14,7 +14,7 @@ Constructor, invariants, state changes as explicit methods.
 - ✅ Invalid state returns a package-level `var Err...`, not a string.
 - ✅ State changes are methods named as verbs (`Assign`, `Resolve`).
 - ✅ Legitimate values are typed constants with `Valid()`.
-- ❌ Never expose raw field mutation from outside.
+- ✅ Fields may be mutated directly, but only inside `core.Model.Touch` so `UpdatedAt` stays correct.
 
 - Current: state changes use `core.Model.Touch`.
 
@@ -85,7 +85,7 @@ The golden source in `internal/<domain>/repository/`. No interface, no subpackag
 - ❌ No interface for the golden source — usecases take the concrete repository.
 - ❌ No inline queries in methods — always via prepared statements.
 
-- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, per-method timeout, `LIMIT/OFFSET` plus `COUNT(*)`. `sql.ErrNoRows` maps to `(nil, nil)`.
+- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, reads use `DefaultReadTimeout` and writes use `DefaultWriteTimeout`. `sql.ErrNoRows` maps to `(nil, nil)`.
 
 Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
@@ -143,8 +143,9 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 - ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output`.
 - ✅ Infra failures wrap as integration errors.
 - ✅ Domain outcomes map: missing → `NotFound`, duplicate → `Conflict`, invalid → `Validation`.
-- ✅ Multi-repo writes go through the transaction manager.
+- ✅ Atomic writes (multi-repo or read-modify-write) go through the transaction manager. See [architecture.md](./architecture.md#transaction-safety).
 - ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
+- ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Test the failure path with the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
 - ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
 
@@ -172,7 +173,7 @@ func (u *Usecase) CreateTicket(
 }
 ```
 
-Transactional case — `assign_ticket.go`:
+Transactional case — `assign_ticket.go` (shape only; the real file also sends a best-effort notification after commit, which never fails the usecase):
 
 ```go
 func (u *Usecase) AssignTicket(
@@ -214,11 +215,9 @@ One delivery mechanism. Parse the request, call the use case, write the response
 
 - ✅ A request DTO per endpoint with validation tags.
 - ✅ Setters answer "created", reads answer "ok".
-- ✅ Every error goes to the shared error writer (maps typed error → transport status).
+- ✅ Every error goes to the shared error writer (typed errors map to statuses per [architecture.md](./architecture.md#error-flow); missing path params use `httpx.WriteBadRequest`).
 - ✅ Path params via the shared helper.
 - ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll decode/validate.
-
-- Current: `httpx.ParseRequest`, `httpx.Write*Response` / `httpx.WriteError`, `httpx.GetPathParam`, `validate:"required,min=1"`, chi handler `func(w http.ResponseWriter, r *http.Request)`.
 
 Source: [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
 
@@ -264,7 +263,7 @@ Register versioned routes under one registrar per mechanism.
 - ✅ Registrar receives the built endpoint; routing only.
 - ❌ No usecase calls in the router.
 
-- Current: router mounted at `/api`, chi `r.Route("/v1/<resources>")`, `RegisterRoutes(r, ep)`.
+- Current: chi `r.Route("/v1/<resources>")` with no path prefix, `RegisterRoutes(r, ep)`.
 
 Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
 
@@ -273,7 +272,6 @@ Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
 func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
 	r.Route("/v1/tickets", func(r chi.Router) {
 		r.Post("/", ep.CreateTicketV1)
-		r.Get("/", ep.ListTicketsV1)
 		r.Get("/{id}", ep.GetTicketV1)
 		r.Patch("/{id}/assign", ep.AssignTicketV1)
 	})
@@ -292,7 +290,7 @@ Composition root. Build the transaction manager, repositories, usecases, endpoin
 - ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in endpoints/usecases — declarative, top-down.
 
-- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `console.NewNotifier()`.
+- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `notifier.NewConsole()`.
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
@@ -307,7 +305,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 	}
 
 	ep := http.SetupEndpoints(
-		usecase.New(ticketRepo, txManager, console.NewNotifier()),
+		usecase.New(ticketRepo, txManager, notifier.NewConsole()),
 	)
 
 	http.RegisterRoutes(r, ep)
@@ -316,23 +314,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 }
 ```
 
-Read adapters for other domains go in `<domain>/public.go`:
-
-Source: [internal/ticket/public.go](../../internal/ticket/public.go)
-
-```go
-// internal/ticket/public.go
-func NewTicketReader(db *sqlx.DB) (public.Reader, error) {
-	ticketRepo, err := repository.NewTicketRepository(db)
-	if err != nil {
-		return nil, err
-	}
-
-	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), console.NewNotifier())
-
-	return public.NewTicketReader(uc), nil
-}
-```
+Read adapters for other domains are assembled in the same file — shape owned by [cross-module-reads.md](./cross-module-reads.md), not duplicated here.
 
 ---
 

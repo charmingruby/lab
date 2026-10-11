@@ -17,7 +17,6 @@ func RegisterRoutes(
 ) {
 	r.Route("/v1/tickets", func(r chi.Router) {
 		r.Post("/", ep.CreateTicketV1)
-		r.Get("/", ep.ListTicketsV1)
 		r.Get("/{id}", ep.GetTicketV1)
 		r.Patch("/{id}/assign", ep.AssignTicketV1)
 	})

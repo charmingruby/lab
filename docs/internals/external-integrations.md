@@ -10,107 +10,67 @@ Any dependency the app doesn't own follows the same three-layer split, regardles
 
 **Messaging is not an external integration.** A queue is a _delivery mechanism_ and lives in `delivery/queue/`. See [architecture.md](./architecture.md).
 
-Code below is current illustration (`s3`, `ticket`); the rule is provider-agnostic.
+This file owns the port-adapter shape. Other docs link here instead of repeating it.
 
-## Decision: domain-specific vs. shared
+## Shape (canonical)
 
-**One question decides where the port and adapter live: does more than one domain need this integration?**
-
-### Used by a single domain
-
-Port and adapter live inside that domain, same shape as any other `client/`:
+Contract in `client/<capability>.go` (no `Client` suffix: `Notifier`, not `NotifierClient`), one file per provider in `client/<capability>/`:
 
 ```
-internal/ticket/
-├── client/
-│   ├── notifier.go        # outbound port
-│   └── storage.go         # new port: interface only
+internal/ticket/client/
+├── notifier.go        # port
+└── notifier/
+    ├── console.go     # production adapter (logs)
+    └── memory.go      # test fake (real state + injectable error, never expectations)
 ```
 
 Source: [internal/ticket/client/](../../internal/ticket/client/)
 
 ```go
-// internal/ticket/client/storage.go
+// internal/ticket/client/notifier.go
+type Notifier interface {
+	Send(ctx context.Context, input SendNotificationInput) error
+}
+```
+
+Adapters follow `New<Provider>` (`NewConsole`, `NewMemory`) and are wired in `<domain>/<domain>.go`. The usecase depends on the port, never on the SDK or `internal/platform/` directly. `memory.go` additionally exposes `SetError` / `Sent` for the failure-path test.
+
+## Decision: domain-specific vs. shared
+
+**One question decides where the port and adapter live: does more than one domain need this integration?**
+
+- **One domain** → port + adapters inside that domain's `client/`, as above.
+- **Two or more domains** → port + adapters move to `internal/shared/client/<capability>/` (`storage.go` + one file per provider, e.g. `s3.go`). Every consuming domain imports the port from there and wires the concrete adapter in its own `<domain>/<domain>.go`.
+
+The `storage` / `s3` names below are illustrative sketches of the second case — the only live inventory today is `ticket/client/notifier.*`:
+
+```go
+// sketch, not inventory
 type ReceiptStorage interface {
 	Upload(ctx context.Context, key string, data []byte) (url string, err error)
 }
 ```
 
-The adapter wraps `internal/platform/` raw client, lives in `client/<provider>/`:
-
-```go
-// internal/ticket/client/s3/s3.go
-type ReceiptStorage struct {
-	client *s3.Client
-}
-
-func NewReceiptStorage(client *s3.Client) *ReceiptStorage {
-	return &ReceiptStorage{client: client}
-}
-
-func (s *ReceiptStorage) Upload(ctx context.Context, key string, data []byte) (string, error) {
-	return s.client.PutObject(ctx, key, data)
-}
-```
-
-The usecase depends on `client.ReceiptStorage`, never on `s3.Client` directly.
-
-### Used by two or more domains
-
-Port and adapter move to `internal/shared/client/<capability>/`, one subpackage per provider:
-
-```
-internal/shared/
-└── client/
-    └── storage/
-        ├── storage.go      # port: interface only
-        └── s3/
-            └── s3.go       # adapter: implements storage.go, wraps internal/platform/s3
-```
-
-Every consuming domain imports the port from `internal/shared/client/storage`, and wires the concrete adapter in its own `<domain>/<domain>.go` (illustrative — names depend on the provider):
-
-```go
-// internal/ticket/ticket.go — illustrative, not current inventory
-storage := s3.New(s3.NewClient(cfg))
-createReceipt := usecase.New(storage, txManager, notifier) // storage typed as shared client.Storage
-```
-
 ## `internal/platform/` — the raw client, once
 
-The actual SDK call goes through one `internal/platform/<provider>/` wrapper (illustrative — see the directory for the current set), built once and passed down:
-
-```go
-// internal/platform/<provider>/<provider>.go — illustrative, not current inventory
-type Client struct {
-	sdk *awss3.Client
-}
-
-func NewClient(cfg Config) *Client { /* ... */ }
-
-func (c *Client) PutObject(ctx context.Context, bucket, key string, data []byte) (string, error) {
-	// raw SDK call, no domain types
-}
-```
-
-`internal/platform/` never imports anything from `internal/shared/` or `internal/<domain>/`.
+The actual SDK call goes through one `internal/platform/<provider>/` wrapper (see the directory for the current set), built once and passed down. It never imports from `internal/shared/` or `internal/<domain>/`. The only generic outbound helper that already exists is `internal/platform/httpx.Client` (`Do[T]`, `WithBaseURL`) — transport plumbing for HTTP integrations, still consumed through a `client` port, never directly by a usecase.
 
 ## Testing an integration
 
 The port is never mocked. Each test injects a real implementation, whichever is most viable:
 
 - **The real integration** — a local/sandboxed provider, same philosophy as the golden source via `test/container/`.
-- **`client/memory/`** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
+- **The `memory.go` fake** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
 
 - Current: postgres is the golden-source example; sandbox examples are minio, localstack, mailhog.
 
 ## Rules
 
 - ✅ Every external integration is a `client` port — never a `repository`. The golden source has no port at all.
-- ✅ Raw SDK/connection code lives in `internal/platform/`, with zero domain awareness.
+- ✅ Raw SDK/connection code lives in `internal/platform/`, with zero domain awareness. App config stays in `config/`.
 - ✅ One domain only → port + adapters inside that domain's `client/`.
-- ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/<provider>/`.
-- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `client/memory/` fake) — never a mock.
+- ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/`.
+- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `memory.go` fake) — never a mock.
 - ❌ Never call a `internal/platform/` client directly from a usecase — always through a `client` adapter.
 - ❌ Never duplicate the same integration's port across domains once a second domain needs it — move it to `internal/shared/client/`.
 - ❌ Never model an external integration as a `repository` — it isn't the domain's source of truth.
