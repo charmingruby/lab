@@ -17,6 +17,7 @@ task
 ## Docs
 
 - [Architecture overview](docs/internals/architecture.md)
+- [Glossary](docs/internals/glossary.md)
 - [Coding patterns](docs/internals/coding-patterns.md)
 - [Commands reference](docs/internals/commands.md)
 - [External integrations](docs/internals/external-integrations.md)

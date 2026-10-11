@@ -85,7 +85,7 @@ The golden source in `internal/<domain>/repository/`. No interface, no subpackag
 - ❌ No interface for the golden source — usecases take the concrete repository.
 - ❌ No inline queries in methods — always via prepared statements.
 
-- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, per-method timeout. `sql.ErrNoRows` maps to `(nil, nil)`.
+- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, reads use `DefaultReadTimeout` and writes use `DefaultWriteTimeout`. `sql.ErrNoRows` maps to `(nil, nil)`.
 
 Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
@@ -143,8 +143,9 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 - ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output`.
 - ✅ Infra failures wrap as integration errors.
 - ✅ Domain outcomes map: missing → `NotFound`, duplicate → `Conflict`, invalid → `Validation`.
-- ✅ Multi-repo writes go through the transaction manager.
+- ✅ Atomic writes (multi-repo or read-modify-write) go through the transaction manager. See [architecture.md](./architecture.md#transaction-safety).
 - ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
+- ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Test the failure path with the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
 - ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
 
@@ -172,7 +173,7 @@ func (u *Usecase) CreateTicket(
 }
 ```
 
-Transactional case — `assign_ticket.go`:
+Transactional case — `assign_ticket.go` (shape only; the real file also sends a best-effort notification after commit, which never fails the usecase):
 
 ```go
 func (u *Usecase) AssignTicket(
@@ -214,11 +215,9 @@ One delivery mechanism. Parse the request, call the use case, write the response
 
 - ✅ A request DTO per endpoint with validation tags.
 - ✅ Setters answer "created", reads answer "ok".
-- ✅ Every error goes to the shared error writer (maps typed error → transport status).
+- ✅ Every error goes to the shared error writer (typed errors map to statuses per [architecture.md](./architecture.md#error-flow); missing path params use `httpx.WriteBadRequest`).
 - ✅ Path params via the shared helper.
 - ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll decode/validate.
-
-- Current: `httpx.ParseRequest`, `httpx.Write*Response` / `httpx.WriteError`, `httpx.GetPathParam`, `validate:"required,min=1"`, chi handler `func(w http.ResponseWriter, r *http.Request)`.
 
 Source: [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
 
@@ -315,23 +314,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 }
 ```
 
-Read adapters for other domains are assembled in the same file:
-
-Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
-
-```go
-// internal/ticket/ticket.go
-func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
-	ticketRepo, err := repository.NewTicketRepository(db)
-	if err != nil {
-		return nil, err
-	}
-
-	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), notifier.NewConsole())
-
-	return public.NewTicketReader(uc), nil
-}
-```
+Read adapters for other domains are assembled in the same file — shape owned by [cross-module-reads.md](./cross-module-reads.md), not duplicated here.
 
 ---
 

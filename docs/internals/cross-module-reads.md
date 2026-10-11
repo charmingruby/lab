@@ -2,7 +2,7 @@
 
 A module never imports another module's internals. To read another module's data, the consumer depends on a port it owns itself. The producer owns two pieces per exposed read, all outside `client/`:
 
-- **`client/` is outbound only** — ports this domain consumes (what it needs from the world: notifier, storage). Exposed reads never live here.
+- **`client/` is outbound only** — ports this domain consumes (what it needs from the world). Exposed reads never live here; shape: [external-integrations.md](./external-integrations.md).
 - **`<domain>/public/`** — the concrete reader only: a thin struct over a usecase that forwards calls into the consumer's shape. No interface lives here.
 - **`<domain>/<domain>.go`** — the assembly: a module-level constructor that builds repositories + use case and returns the concrete `public` reader.
 

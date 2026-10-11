@@ -16,7 +16,7 @@ func (e *Endpoint) AssignTicketV1(w http.ResponseWriter, r *http.Request) {
 
 	ticketID, err := httpx.GetPathParam(r, "id")
 	if err != nil {
-		httpx.WriteError(w, r, err)
+		httpx.WriteBadRequest(w, r, err)
 		return
 	}
 

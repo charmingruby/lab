@@ -73,7 +73,7 @@ func (r *TicketRepository) statement(queryName string) (*sqlx.Stmt, error) {
 }
 
 func (r *TicketRepository) Create(ctx context.Context, ticket *model.Ticket) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
+	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultWriteTimeout)
 	defer cancel()
 
 	stmt, err := r.statement(createTicketQuery)
@@ -115,7 +115,7 @@ func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Tick
 }
 
 func (r *TicketRepository) Update(ctx context.Context, ticket *model.Ticket) error {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
+	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultWriteTimeout)
 	defer cancel()
 
 	stmt, err := r.statement(updateTicketQuery)
