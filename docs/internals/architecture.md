@@ -12,7 +12,7 @@ delivery → endpoint → usecase → model
                            → client port → adapter
 ```
 
-- Current: chi mounted at `/api` with `httpx` helpers. Source: `cmd/api/main.go`, `internal/platform/httpx/`.
+- Current: chi with `httpx` helpers (no path prefix; probes + domains mount directly). Source: `cmd/api/main.go`, `internal/platform/httpx/`.
 
 ## Domain wiring
 
@@ -26,14 +26,13 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 - `cmd/api/main.go` — boots server, mounts domains, starts listening.
 - `internal/<domain>/` — one ports-and-adapters module per bounded context.
-  - `<domain>.go` — composition root (wires everything)
-  - `public.go` — cross-domain read assembly
+  - `<domain>.go` — composition root (wires everything, including cross-domain read assembly)
   - `http/endpoint/` — request DTO + handler (one delivery mechanism, see below)
   - `http/route.go` — registers versioned routes
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
   - `repository/` — the golden source, concrete (no interface — swapping it is trivial when needed). Single-repo writes need no explicit transaction; the repository handles it.
-  - `client/` — outbound ports this domain consumes (interfaces) plus adapters in subdirectories. Ports exist here as an anti-corruption layer for swappable providers. Never hosts exposed reads — those live in `public/`.
+  - `client/` — outbound ports this domain consumes (interfaces, no `Client` suffix) plus adapters in `<capability>/` subdirectories (one file per provider: `console.go`, `memory.go`). Ports exist here as an anti-corruption layer for swappable providers. Never hosts exposed reads — those live in `public/`.
 - `internal/shared/` — shared domain language: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
 - `internal/platform/` — internal infrastructure with zero domain awareness: raw external clients and transport/config helpers. See the directory for the current set.
 - `pkg/` — reserved for code exposed to the outside world.
@@ -44,12 +43,11 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 Domains never import each other's `usecase`, `repository`, or `model` packages. Instead:
 
-1. The producing domain defines a read port in `public/` (not in `client/` — `client/` is outbound only).
-2. A **public adapter** in `public/` wraps a usecase and implements the port.
-3. **`public.go`** assembles the wiring and returns the adapter typed as the port.
-4. The consuming domain depends only on the public port interface.
+1. The producing domain exposes a concrete reader in `public/` (not in `client/` — `client/` is outbound only): a thin struct over a usecase. No interface lives in `public/` — the interface is declared by the consuming module and satisfied implicitly.
+2. **`<domain>/<domain>.go`** assembles the wiring and returns the concrete `public` reader.
+3. The consuming domain declares only the methods it needs as its own port interface.
 
-Source: [cross-module-reads.md](./cross-module-reads.md), [internal/ticket/public.go](../../internal/ticket/public.go)
+Source: [cross-module-reads.md](./cross-module-reads.md), [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 ## Error flow
 
@@ -90,7 +88,7 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 ### Repository and client shape
 
-`repository/` is concrete — no port interface, no subpackages. `client/` keeps the port-adapter split (port + one subpackage per adapter). Same adapter-per-subpackage shape for messaging adapters inside `delivery/queue/`.
+`repository/` is concrete — no port interface, no subpackages. `client/` keeps the port-adapter split: contract in `client/<capability>.go`, one file per provider in `client/<capability>/` (`console.go`, `memory.go`). Same capability-per-subpackage shape for messaging adapters inside `delivery/queue/`.
 
 - Current: postgres; `client/` adapters per provider; queue adapters per provider. See the directories for the current set.
 
@@ -98,7 +96,7 @@ Everything bound to a transport (DTOs, protos, endpoints, listeners, event schem
 
 Storage, email, cache, third-party APIs — same shape as `client/`, raw connection in `internal/platform/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [external-integrations.md](./external-integrations.md).
 
-Wire the module in `<domain>/<domain>.go`. Expose read adapters to other domains in `<domain>/public.go`. Shared domain language goes in `internal/shared/`. Connections and external config go in `internal/platform/`.
+Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to other domains from the same file. Shared domain language goes in `internal/shared/`. Connections and external config go in `internal/platform/` (validation lives inside `internal/platform/httpx/`, nowhere else).
 
 ## Related
 

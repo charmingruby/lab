@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/charmingruby/lab/internal/platform/logging"
-	"github.com/charmingruby/lab/internal/ticket/client/memory"
+	"github.com/charmingruby/lab/internal/ticket/client/notifier"
 	"github.com/charmingruby/lab/internal/ticket/http/endpoint"
 	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
@@ -27,7 +27,7 @@ func newTestEndpoint(t *testing.T) (*endpoint.Endpoint, *usecase.Usecase) {
 	repo, err := repository.NewTicketRepository(db)
 	require.NoError(t, err)
 
-	uc := usecase.New(repo, repository.NewTransactionManager(db), memory.NewNotifier())
+	uc := usecase.New(repo, repository.NewTransactionManager(db), notifier.NewMemory())
 
 	return endpoint.New(uc), uc
 }

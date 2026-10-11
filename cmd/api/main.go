@@ -15,7 +15,6 @@ import (
 	"github.com/charmingruby/lab/internal/platform/httpx"
 	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/platform/postgrex"
-	"github.com/charmingruby/lab/internal/platform/validator"
 	"github.com/charmingruby/lab/internal/ticket"
 )
 
@@ -52,8 +51,7 @@ func run() error {
 	}
 	log.Info("postgres: connected")
 
-	val := validator.New()
-	srv, router := httpx.NewServer(cfg.Port, val)
+	srv, router := httpx.NewServer(cfg.Port)
 
 	if err := ticket.New(router, db); err != nil {
 		log.Error("ticket: module error", "error", err)

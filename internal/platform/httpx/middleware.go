@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	"github.com/charmingruby/lab/internal/platform/logging"
-	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
-func withValidator(v *validator.Validator) func(next http.Handler) http.Handler {
+func withValidator(v *validator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := validator.WithValidator(r.Context(), v)
+			ctx := validatorToContext(r.Context(), v)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

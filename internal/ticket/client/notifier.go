@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type NotificationClient interface {
+type Notifier interface {
 	Send(ctx context.Context, input SendNotificationInput) error
 }
 

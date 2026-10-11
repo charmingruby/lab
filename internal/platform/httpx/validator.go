@@ -1,4 +1,4 @@
-package validator
+package httpx
 
 import (
 	"context"
@@ -6,22 +6,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
+	val "github.com/go-playground/validator/v10"
 )
 
-type Validator struct {
-	validator *validator.Validate
+type validator struct {
+	validator *val.Validate
 }
 
 type ctxKey struct{}
 
-func New() *Validator {
-	return &Validator{
-		validator: validator.New(),
+func newValidator() *validator {
+	return &validator{
+		validator: val.New(),
 	}
 }
 
-func (v *Validator) Validate(s any) error {
+func (v *validator) Validate(s any) error {
 	err := v.validator.Struct(s)
 
 	if err == nil {
@@ -33,21 +33,21 @@ func (v *Validator) Validate(s any) error {
 	return errors.New(strings.Join(errs, ", "))
 }
 
-func WithValidator(ctx context.Context, val *Validator) context.Context {
+func validatorToContext(ctx context.Context, val *validator) context.Context {
 	return context.WithValue(ctx, ctxKey{}, val)
 }
 
-func ValidatorFromContext(ctx context.Context) *Validator {
-	val, ok := ctx.Value(ctxKey{}).(*Validator)
+func validatorFromContext(ctx context.Context) *validator {
+	val, ok := ctx.Value(ctxKey{}).(*validator)
 	if !ok {
-		return New()
+		return newValidator()
 	}
 
 	return val
 }
 
-func (v *Validator) unwrapValidationErr(err error) []string {
-	var valErr *validator.ValidationErrors
+func (v *validator) unwrapValidationErr(err error) []string {
+	var valErr *val.ValidationErrors
 	if !errors.As(err, &valErr) {
 		return []string{err.Error()}
 	}

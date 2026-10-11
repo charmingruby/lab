@@ -7,26 +7,19 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
 type Server struct {
 	http.Server
 }
 
-func NewServer(port string, validator *validator.Validator) (*Server, chi.Router) {
+func NewServer(port string) (*Server, chi.Router) {
 	addr := ":" + port
 
 	r := chi.NewRouter()
-	r.Use(withValidator(validator), withLogging)
+	r.Use(withValidator(newValidator()), withLogging)
 
-	var apiRouter chi.Router
-	r.Route("/api", func(router chi.Router) {
-		apiRouter = router
-	})
-
-	registerProbes(apiRouter)
+	registerProbes(r)
 
 	return &Server{
 		Server: http.Server{
@@ -36,7 +29,7 @@ func NewServer(port string, validator *validator.Validator) (*Server, chi.Router
 			Addr:         addr,
 			Handler:      r,
 		},
-	}, apiRouter
+	}, r
 }
 
 func (s *Server) Start() error {

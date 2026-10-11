@@ -1,4 +1,4 @@
-package memory
+package notifier
 
 import (
 	"context"
@@ -7,17 +7,17 @@ import (
 	"github.com/charmingruby/lab/internal/ticket/client"
 )
 
-type Notifier struct {
+type Memory struct {
 	err  error
 	sent []client.SendNotificationInput
 	mu   sync.Mutex
 }
 
-func NewNotifier() *Notifier {
-	return &Notifier{}
+func NewMemory() *Memory {
+	return &Memory{}
 }
 
-func (n *Notifier) Send(_ context.Context, input client.SendNotificationInput) error {
+func (n *Memory) Send(_ context.Context, input client.SendNotificationInput) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -30,14 +30,14 @@ func (n *Notifier) Send(_ context.Context, input client.SendNotificationInput) e
 	return nil
 }
 
-func (n *Notifier) SetError(err error) {
+func (n *Memory) SetError(err error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	n.err = err
 }
 
-func (n *Notifier) Sent() []client.SendNotificationInput {
+func (n *Memory) Sent() []client.SendNotificationInput {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 

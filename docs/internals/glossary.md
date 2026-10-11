@@ -13,13 +13,13 @@ This is a living glossary for the Go backend template. It explains what common t
 
 #### Domain
 
-A bounded context in `internal/<domain>/`. Each domain is a self-contained module with its own model, usecase, repository, and delivery mechanism(s). Domains never import each other's internals — they communicate through the producer's `public` port.
+A bounded context in `internal/<domain>/`. Each domain is a self-contained module with its own model, usecase, repository, and delivery mechanism(s). Domains never import each other's internals — the consumer declares its own port interface, satisfied implicitly by the producer's `public` reader.
 
 Source: [architecture.md](./architecture.md), [internal/ticket/](../../internal/ticket/)
 
 #### Model
 
-The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Constructors return `(*Model, error)` when there are invariants to enforce.
+The domain entity with constructor invariants and state-change methods. The source of truth for business rules. Constructors return `(*Model, error)` when there are invariants to enforce. Fields may be mutated directly as long as the mutation runs inside `core.Model.Touch`.
 
 - Current: builds on `core.Model` for base fields and `Touch` for state mutation.
 
@@ -47,9 +47,9 @@ Source: [internal/ticket/client/](../../internal/ticket/client/)
 
 #### Adapter
 
-The concrete implementation behind a client port. A console notifier is an adapter for the notification client port; an in-memory notifier is the test adapter for the same port. Adapters live beside their port in a subdirectory. The repository is not an adapter — it has no port.
+The concrete implementation behind a client port. A console notifier is an adapter for the notification port; an in-memory notifier is the test adapter for the same port. Adapters live in `client/<capability>/` beside their port, one file per provider (`console.go`, `memory.go`). The repository is not an adapter — it has no port.
 
-Source: [internal/ticket/client/console/](../../internal/ticket/client/console/), [internal/ticket/client/memory/](../../internal/ticket/client/memory/)
+Source: [internal/ticket/client/notifier/](../../internal/ticket/client/notifier/)
 
 #### Endpoint
 
@@ -85,9 +85,9 @@ Source: [architecture.md](./architecture.md), [internal/ticket/ticket.go](../../
 
 #### Public adapter
 
-A thin struct over a usecase that exposes a read port for cross-domain reads. Port + adapter live together in `<domain>/public/`. Assembled in `<domain>/public.go`, which builds repositories + usecase and returns the adapter typed as the public port.
+A thin struct over a usecase that exposes reads for cross-domain consumption. Only the concrete struct lives in `<domain>/public/` — no interface there; the consuming module declares its own. Assembled in `<domain>/<domain>.go`, which builds repositories + usecase and returns the concrete `public` reader.
 
-Source: [internal/ticket/public.go](../../internal/ticket/public.go), [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go)
+Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go), [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go)
 
 ## Delivery mechanisms
 
@@ -121,7 +121,7 @@ Source: [internal/shared/](../../internal/shared/)
 
 #### platform
 
-Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers. Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set — do not treat this doc as inventory.
+Internal infrastructure in `internal/platform/` with zero domain awareness: raw external clients and transport/config helpers. Validation lives inside `internal/platform/httpx/` — never as a standalone package. Adapters in `internal/shared/client/` or a domain's `client/` wrap it. `internal/platform/` never imports from `internal/shared/` or `internal/<domain>/`. See the directory for the current set — do not treat this doc as inventory.
 
 Source: [internal/platform/](../../internal/platform/)
 
@@ -135,4 +135,4 @@ Reserved for code exposed to the outside world (e.g. public API contract). Absen
 - If you see `adapter`, think "concrete implementation behind a client port."
 - If you see `usecase`, think "one business action, orchestrates everything."
 - If you see `delivery`, think "transport the domain speaks (HTTP, gRPC, queue)."
-- If you see `public.go`, think "cross-domain read assembly."
+- If you see `<domain>.go`, think "module wiring + cross-domain read assembly."

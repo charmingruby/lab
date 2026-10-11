@@ -23,7 +23,10 @@ Port and adapter live inside that domain, same shape as any other `client/`:
 ```
 internal/ticket/
 ├── client/
-│   ├── notifier.go        # outbound port
+│   ├── notifier.go        # outbound port (no `Client` suffix)
+│   ├── notifier/
+│   │   ├── console.go     # adapter
+│   │   └── memory.go      # test adapter
 │   └── storage.go         # new port: interface only
 ```
 
@@ -36,19 +39,21 @@ type ReceiptStorage interface {
 }
 ```
 
-The adapter wraps `internal/platform/` raw client, lives in `client/<provider>/`:
+Port interfaces never carry a `Client` suffix (`Notifier`, not `NotifierClient`; `ReceiptStorage`, not `ReceiptStorageClient`).
+
+The adapter wraps `internal/platform/` raw client, lives in `client/<capability>/` as one file per provider:
 
 ```go
-// internal/ticket/client/s3/s3.go
-type ReceiptStorage struct {
+// internal/ticket/client/storage/s3.go
+type S3 struct {
 	client *s3.Client
 }
 
-func NewReceiptStorage(client *s3.Client) *ReceiptStorage {
-	return &ReceiptStorage{client: client}
+func NewS3(client *s3.Client) *S3 {
+	return &S3{client: client}
 }
 
-func (s *ReceiptStorage) Upload(ctx context.Context, key string, data []byte) (string, error) {
+func (s *S3) Upload(ctx context.Context, key string, data []byte) (string, error) {
 	return s.client.PutObject(ctx, key, data)
 }
 ```
@@ -57,15 +62,14 @@ The usecase depends on `client.ReceiptStorage`, never on `s3.Client` directly.
 
 ### Used by two or more domains
 
-Port and adapter move to `internal/shared/client/<capability>/`, one subpackage per provider:
+Port and adapter move to `internal/shared/client/<capability>/`, one file per provider:
 
 ```
 internal/shared/
 └── client/
     └── storage/
         ├── storage.go      # port: interface only
-        └── s3/
-            └── s3.go       # adapter: implements storage.go, wraps internal/platform/s3
+        └── s3.go           # adapter: implements storage.go, wraps internal/platform/s3
 ```
 
 Every consuming domain imports the port from `internal/shared/client/storage`, and wires the concrete adapter in its own `<domain>/<domain>.go` (illustrative — names depend on the provider):
@@ -100,7 +104,7 @@ func (c *Client) PutObject(ctx context.Context, bucket, key string, data []byte)
 The port is never mocked. Each test injects a real implementation, whichever is most viable:
 
 - **The real integration** — a local/sandboxed provider, same philosophy as the golden source via `test/container/`.
-- **`client/memory/`** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
+- **`client/notifier/memory.go`** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
 
 - Current: postgres is the golden-source example; sandbox examples are minio, localstack, mailhog.
 
@@ -110,7 +114,7 @@ The port is never mocked. Each test injects a real implementation, whichever is 
 - ✅ Raw SDK/connection code lives in `internal/platform/`, with zero domain awareness.
 - ✅ One domain only → port + adapters inside that domain's `client/`.
 - ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/<provider>/`.
-- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `client/memory/` fake) — never a mock.
+- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `client/<capability>/memory.go` fake) — never a mock.
 - ❌ Never call a `internal/platform/` client directly from a usecase — always through a `client` adapter.
 - ❌ Never duplicate the same integration's port across domains once a second domain needs it — move it to `internal/shared/client/`.
 - ❌ Never model an external integration as a `repository` — it isn't the domain's source of truth.

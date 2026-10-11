@@ -14,7 +14,7 @@ Constructor, invariants, state changes as explicit methods.
 - ✅ Invalid state returns a package-level `var Err...`, not a string.
 - ✅ State changes are methods named as verbs (`Assign`, `Resolve`).
 - ✅ Legitimate values are typed constants with `Valid()`.
-- ❌ Never expose raw field mutation from outside.
+- ✅ Fields may be mutated directly, but only inside `core.Model.Touch` so `UpdatedAt` stays correct.
 
 - Current: state changes use `core.Model.Touch`.
 
@@ -85,7 +85,7 @@ The golden source in `internal/<domain>/repository/`. No interface, no subpackag
 - ❌ No interface for the golden source — usecases take the concrete repository.
 - ❌ No inline queries in methods — always via prepared statements.
 
-- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, per-method timeout, `LIMIT/OFFSET` plus `COUNT(*)`. `sql.ErrNoRows` maps to `(nil, nil)`.
+- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, per-method timeout. `sql.ErrNoRows` maps to `(nil, nil)`.
 
 Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
@@ -264,7 +264,7 @@ Register versioned routes under one registrar per mechanism.
 - ✅ Registrar receives the built endpoint; routing only.
 - ❌ No usecase calls in the router.
 
-- Current: router mounted at `/api`, chi `r.Route("/v1/<resources>")`, `RegisterRoutes(r, ep)`.
+- Current: chi `r.Route("/v1/<resources>")` with no path prefix, `RegisterRoutes(r, ep)`.
 
 Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
 
@@ -273,7 +273,6 @@ Source: [internal/ticket/http/route.go](../../internal/ticket/http/route.go)
 func RegisterRoutes(r chi.Router, ep *endpoint.Endpoint) {
 	r.Route("/v1/tickets", func(r chi.Router) {
 		r.Post("/", ep.CreateTicketV1)
-		r.Get("/", ep.ListTicketsV1)
 		r.Get("/{id}", ep.GetTicketV1)
 		r.Patch("/{id}/assign", ep.AssignTicketV1)
 	})
@@ -292,7 +291,7 @@ Composition root. Build the transaction manager, repositories, usecases, endpoin
 - ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in endpoints/usecases — declarative, top-down.
 
-- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `console.NewNotifier()`.
+- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `notifier.NewConsole()`.
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
@@ -307,7 +306,7 @@ func New(r chi.Router, db *sqlx.DB) error {
 	}
 
 	ep := http.SetupEndpoints(
-		usecase.New(ticketRepo, txManager, console.NewNotifier()),
+		usecase.New(ticketRepo, txManager, notifier.NewConsole()),
 	)
 
 	http.RegisterRoutes(r, ep)
@@ -316,19 +315,19 @@ func New(r chi.Router, db *sqlx.DB) error {
 }
 ```
 
-Read adapters for other domains go in `<domain>/public.go`:
+Read adapters for other domains are assembled in the same file:
 
-Source: [internal/ticket/public.go](../../internal/ticket/public.go)
+Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 
 ```go
-// internal/ticket/public.go
-func NewTicketReader(db *sqlx.DB) (public.Reader, error) {
+// internal/ticket/ticket.go
+func NewTicketReader(db *sqlx.DB) (*public.TicketReader, error) {
 	ticketRepo, err := repository.NewTicketRepository(db)
 	if err != nil {
 		return nil, err
 	}
 
-	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), console.NewNotifier())
+	uc := usecase.New(ticketRepo, repository.NewTransactionManager(db), notifier.NewConsole())
 
 	return public.NewTicketReader(uc), nil
 }

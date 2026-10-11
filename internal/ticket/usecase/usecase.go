@@ -8,13 +8,13 @@ import (
 type Usecase struct {
 	ticketRepo *repository.TicketRepository
 	txManager  *repository.TransactionManager
-	notifier   client.NotificationClient
+	notifier   client.Notifier
 }
 
 func New(
 	ticketRepo *repository.TicketRepository,
 	txManager *repository.TransactionManager,
-	notifier client.NotificationClient,
+	notifier client.Notifier,
 ) *Usecase {
 	return &Usecase{
 		ticketRepo: ticketRepo,
