@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	Port        string `env:"PORT,required"`
-	DatabaseURL string `env:"DATABASE_URL,required"`
+	Port        string `env:"PORT" envDefault:"4000"`
+	DatabaseURL string `env:"DATABASE_URL" envDefault:"postgres://postgres:postgres@localhost:5432/lab?sslmode=disable"`
 }
 
 func Load() (*Config, error) {

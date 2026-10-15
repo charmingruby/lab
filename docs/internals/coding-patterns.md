@@ -1,6 +1,6 @@
 # Coding Patterns
 
-Implementation reference for a domain feature. Rules below are the pattern; code blocks are the current illustration (`internal/ticket/`, postgres, HTTP). Mirror the shape for any `<domain>`, do not invent new shapes.
+Implementation reference for a domain feature. Rules below are the pattern; code blocks illustrate the shape for any `<domain>`. Mirror the shape, do not invent new shapes.
 
 > **Module structure**: see [architecture.md](./architecture.md).
 
@@ -15,8 +15,6 @@ Constructor, invariants, state changes as explicit methods.
 - ✅ State changes are methods named as verbs (`Assign`, `Resolve`).
 - ✅ Legitimate values are typed constants with `Valid()`.
 - ✅ Fields may be mutated directly, but only inside `core.Model.Touch` so `UpdatedAt` stays correct.
-
-- Current: state changes use `core.Model.Touch`.
 
 Source: [internal/ticket/model/ticket.go](../../internal/ticket/model/ticket.go)
 
@@ -85,8 +83,6 @@ The golden source in `internal/<domain>/repository/`. No interface, no subpackag
 - ❌ No interface for the golden source — usecases take the concrete repository.
 - ❌ No inline queries in methods — always via prepared statements.
 
-- Current: postgres via `sqlx`/`postgrex` — query map prepared once in the constructor, `deleted_at IS NULL` on reads, reads use `DefaultReadTimeout` and writes use `DefaultWriteTimeout`. `sql.ErrNoRows` maps to `(nil, nil)`.
-
 Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
 
 ```go
@@ -130,8 +126,6 @@ type Transaction struct {
 }
 ```
 
-- Current: backed by `postgrex.RunInTx`.
-
 ---
 
 ## 3. usecase
@@ -148,8 +142,6 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 - ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Test the failure path with the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
 - ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
-
-- Current: `customerr.Validation / NotFound / Conflict / Integration`; transaction via `repository.TransactionManager.Transact`.
 
 Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
 
@@ -278,8 +270,6 @@ Composition root. Build the transaction manager, repositories, usecases; hand th
 - ✅ One constructor per module.
 - ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in usecases — declarative, top-down.
-
-- Current: `New(r chi.Router, db *sqlx.DB) error`; adapters e.g. `notifier.NewConsole()`.
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 

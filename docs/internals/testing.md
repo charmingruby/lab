@@ -9,9 +9,7 @@
 
 ## Prerequisites
 
-Each case needs a fresh, isolated, real golden source.
-
-- Current: `test/container/postgres.go` spins one database per case and runs `db/migration`. Needs a reachable Docker daemon (`DOCKER_HOST` or `docker.host` in `~/.testcontainers.properties` for non-default sockets). Without Docker, point `TEST_DATABASE_URL` at a real database (`docker compose up -d` + `task mig-up`) and tests reuse it.
+Each case needs a fresh, isolated, real golden source. See `test/container/` and `db/migration` for the setup.
 
 ## Test conventions
 

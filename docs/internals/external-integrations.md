@@ -42,7 +42,7 @@ Adapters follow `New<Provider>` (`NewConsole`, `NewMemory`) and are wired in `<d
 - **One domain** → port + adapters inside that domain's `client/`, as above.
 - **Two or more domains** → port + adapters move to `internal/shared/client/<capability>/` (`storage.go` + one file per provider, e.g. `s3.go`). Every consuming domain imports the port from there and wires the concrete adapter in its own `<domain>/<domain>.go`.
 
-The `storage` / `s3` names below are illustrative sketches of the second case — the only live inventory today is `ticket/client/notifier.*`:
+The `storage` / `s3` names below are illustrative sketches of the second case:
 
 ```go
 // sketch, not inventory
@@ -53,7 +53,7 @@ type ReceiptStorage interface {
 
 ## `internal/platform/` — the raw client, once
 
-The actual SDK call goes through one `internal/platform/<provider>/` wrapper (see the directory for the current set), built once and passed down. It never imports from `internal/shared/` or `internal/<domain>/`. The only generic outbound helper that already exists is `internal/platform/httpx.Client` (`Do[T]`, `WithBaseURL`) — transport plumbing for HTTP integrations, still consumed through a `client` port, never directly by a usecase.
+The actual SDK call goes through one `internal/platform/<provider>/` wrapper (see the directory for the current set), built once and passed down. It never imports from `internal/shared/` or `internal/<domain>/`.
 
 ## Testing an integration
 
@@ -62,12 +62,10 @@ The port is never mocked. Each test injects a real implementation, whichever is 
 - **The real integration** — a local/sandboxed provider, same philosophy as the golden source via `test/container/`.
 - **The `memory.go` fake** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
 
-- Current: postgres is the golden-source example; sandbox examples are minio, localstack, mailhog.
-
 ## Rules
 
 - ✅ Every external integration is a `client` port — never a `repository`. The golden source has no port at all.
-- ✅ Raw SDK/connection code lives in `internal/platform/`, with zero domain awareness. App config stays in `config/`.
+- ✅ Raw clients plus app config live in `internal/platform/`, with zero domain awareness.
 - ✅ One domain only → port + adapters inside that domain's `client/`.
 - ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/`.
 - ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `memory.go` fake) — never a mock.

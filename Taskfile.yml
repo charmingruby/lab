@@ -13,27 +13,30 @@ tasks:
       - go mod tidy
       - air
     silent: true
-  mig-up:
+  mig:up:
     desc: Runs the migrations up
     cmd: migrate -path {{.MIGRATIONS_PATH}} -database "{{.DATABASE_URL}}" up
-  mig-down:
+    silent: true
+  mig:down:
     desc: Runs the migrations down
     cmd: migrate -path {{.MIGRATIONS_PATH}} -database "{{.DATABASE_URL}}" down
-  new-mig:
+    silent: true
+  mig:new:
     desc: Creates a new migration
     cmd: migrate create -ext sql -dir {{.MIGRATIONS_PATH}} -seq {{.name}}
+    silent: true
   lint:
     desc: Runs linter
     cmds:
       - go fmt ./...
       - golangci-lint run ./...
-  lint-fix:
+  lint:fix:
     desc: Runs linter with auto-fix
     cmds:
       - go fmt ./...
       - golangci-lint run --fix ./...
   test:
-    desc: Runs tests (integration tests spin postgres containers)
+    desc: Runs tests
     cmd: go test ./... -race
   build:
     desc: Builds API binary

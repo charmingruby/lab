@@ -8,7 +8,7 @@ A module never imports another module's internals. To read another module's data
 
 The consumer declares its own port interface (the methods it needs) and codes only against it. The producer's concrete reader satisfies it implicitly. In tests the port is backed by the real public adapter over a real database — never a mock.
 
-## Example — `ticket` exposes `TicketReader` (current illustration — same shape for any `<domain>`)
+## Example — `ticket` exposes `TicketReader` (same shape for any `<domain>`)
 
 **1. The concrete reader** — [internal/ticket/public/ticket_reader.go](../../internal/ticket/public/ticket_reader.go) — no interface, thin struct over a use case:
 
@@ -59,5 +59,3 @@ reader, err := ticket.NewTicketReader(db)
 ```
 
 ❌ Never import another module's `usecase`, `repository`, or `model` — depend on your own port interface, satisfied by its `public` reader instead.
-
-- Current: `db` is `*sqlx.DB` via `container.StartPostgres(t)`.

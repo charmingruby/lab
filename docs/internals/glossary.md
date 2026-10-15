@@ -79,7 +79,7 @@ Domain types, typed errors, ports + adapters used by 2+ domains. See directory: 
 
 #### platform
 
-Raw external clients + transport helpers, zero domain awareness. App config is the exception in `config/`. See directory: [internal/platform/](../../internal/platform/)
+App infrastructure with zero domain awareness: owns cross-cutting capabilities the app needs to run, e.g. config, observability (`logging`, metrics, tracing), transport (`httpx`), provider connections (`postgrex`, `awsx`, `kafka`). See directory: [internal/platform/](../../internal/platform/)
 
 #### pkg (reserved)
 

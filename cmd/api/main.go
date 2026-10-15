@@ -11,7 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/charmingruby/lab/config"
+	"github.com/charmingruby/lab/internal/platform/config"
 	"github.com/charmingruby/lab/internal/platform/httpx"
 	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/charmingruby/lab/internal/platform/postgrex"
