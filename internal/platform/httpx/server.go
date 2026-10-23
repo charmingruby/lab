@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/charmingruby/lab/internal/platform/logging"
 )
 
 type Server struct {
