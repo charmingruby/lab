@@ -3,9 +3,9 @@ package customerr
 import "net/http"
 
 type HTTPError struct {
-	Status        int
-	Message       string
 	OriginalError Error
+	Message       string
+	Status        int
 }
 
 var UnhandledHTTPError = HTTPError{
