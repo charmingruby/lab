@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/charmingruby/lab/internal/platform/logging"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -51,5 +52,31 @@ func registerProbes(r chi.Router) {
 
 	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+	})
+}
+
+func withValidator(v *validator) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := validatorToContext(r.Context(), v)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func withLogging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := logging.Log.With(
+			"path", r.URL.Path,
+			"method", r.Method,
+		)
+
+		ctx := logging.WithLogger(r.Context(), log)
+
+		log.InfoContext(ctx, "request started")
+		defer log.InfoContext(ctx, "request finished")
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
