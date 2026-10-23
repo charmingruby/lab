@@ -38,7 +38,7 @@ func HandleErr(w http.ResponseWriter, r *http.Request, err error) {
 		log.Warn("application error",
 			"type", httpErr.OriginalError.Type,
 			"message", httpErr.Message,
-			"original_error", httpErr.OriginalError.Err.Error(),
+			"original_error", httpErr.OriginalError.Error(),
 		)
 
 		writeResponse(w, httpErr.Status, ErrorResponse{

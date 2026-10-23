@@ -27,7 +27,7 @@ func MapToHTTP(err Error) HTTPError {
 		httpErr.Status = http.StatusConflict
 		return httpErr
 	case TypeValidation:
-		httpErr.Status = http.StatusUnprocessableEntity
+		httpErr.Status = http.StatusBadRequest
 		return httpErr
 	case TypeUnauthorized:
 		httpErr.Status = http.StatusUnauthorized
