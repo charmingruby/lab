@@ -1,7 +1,7 @@
 package httpx
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -14,11 +14,11 @@ type ErrorResponse struct {
 }
 
 func WriteOKResponse(w http.ResponseWriter, v any) {
-	WriteResponse(w, http.StatusOK, v)
+	writeResponse(w, http.StatusOK, v)
 }
 
 func WriteCreatedResponse(w http.ResponseWriter, v any) {
-	WriteResponse(w, http.StatusCreated, v)
+	writeResponse(w, http.StatusCreated, v)
 }
 
 func WriteEmptyResponse(w http.ResponseWriter) {
@@ -26,10 +26,36 @@ func WriteEmptyResponse(w http.ResponseWriter) {
 }
 
 func WriteBadRequest(w http.ResponseWriter, r *http.Request, err error) {
-	WriteError(w, r, customerr.Validation(err.Error()))
+	HandleErr(w, r, customerr.Validation(err.Error()))
 }
 
-func WriteResponse(w http.ResponseWriter, status int, v any) {
+func HandleErr(w http.ResponseWriter, r *http.Request, err error) {
+	log := logging.LoggerFromContext(r.Context())
+
+	if cerr, ok := errors.AsType[*customerr.Error](err); ok {
+		httpErr := customerr.MapToHTTP(*cerr)
+
+		log.Warn("application error",
+			"type", httpErr.OriginalError.Type,
+			"message", httpErr.Message,
+			"original_error", httpErr.OriginalError.Err.Error(),
+		)
+
+		writeResponse(w, httpErr.Status, ErrorResponse{
+			Message: httpErr.Message,
+		})
+
+		return
+	}
+
+	log.Error("internal server error", "error", err)
+
+	writeResponse(w, customerr.UnhandledHTTPError.Status, ErrorResponse{
+		Message: customerr.UnhandledHTTPError.Message,
+	})
+}
+
+func writeResponse(w http.ResponseWriter, status int, v any) {
 	if v == nil {
 		w.WriteHeader(status)
 		return
@@ -45,60 +71,4 @@ func WriteResponse(w http.ResponseWriter, status int, v any) {
 
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
-}
-
-func WriteError(w http.ResponseWriter, r *http.Request, err error) {
-	log := logging.LoggerFromContext(r.Context())
-
-	if customErr, ok := errors.AsType[*customerr.Error](err); ok {
-		var originalErrMsg string
-		if customErr.Err != nil {
-			originalErrMsg = customErr.Err.Error()
-		}
-
-		log.Warn("application error",
-			"type", customErr.Type,
-			"message", customErr.Message,
-			"original_error", originalErrMsg,
-		)
-
-		writeCustomError(w, customErr)
-		return
-	}
-
-	log.Error("internal server error", "error", err)
-
-	WriteResponse(w, http.StatusInternalServerError, ErrorResponse{
-		Message: "Internal Server Error",
-	})
-}
-
-func writeCustomError(w http.ResponseWriter, err *customerr.Error) {
-	status := mapStatus(err.Type)
-	msg := err.Message
-
-	if err.Type == customerr.TypeIntegration {
-		msg = "Internal Server Error"
-	}
-
-	WriteResponse(w, status, ErrorResponse{
-		Message: msg,
-	})
-}
-
-func mapStatus(t customerr.ErrorType) int {
-	switch t {
-	case customerr.TypeNotFound:
-		return http.StatusNotFound
-	case customerr.TypeValidation:
-		return http.StatusBadRequest
-	case customerr.TypeConflict:
-		return http.StatusConflict
-	case customerr.TypeIntegration:
-		return http.StatusInternalServerError
-	case customerr.TypeUnauthorized:
-		return http.StatusUnauthorized
-	default:
-		return http.StatusInternalServerError
-	}
 }
