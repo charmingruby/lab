@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/charmingruby/lab/internal/platform/httpx"
-	"github.com/charmingruby/lab/internal/ticket/model"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
@@ -17,18 +16,6 @@ type TicketV1Response struct {
 	Description string    `json:"description"`
 	Status      string    `json:"status"`
 	Priority    string    `json:"priority"`
-}
-
-func newTicketV1Response(ticket *model.Ticket) TicketV1Response {
-	return TicketV1Response{
-		ID:          ticket.ID,
-		Title:       ticket.Title,
-		Description: ticket.Description,
-		Status:      string(ticket.Status),
-		Priority:    string(ticket.Priority),
-		AssigneeID:  ticket.AssigneeID,
-		CreatedAt:   ticket.CreatedAt,
-	}
 }
 
 func (e *Endpoint) GetTicketV1(w http.ResponseWriter, r *http.Request) {
@@ -44,9 +31,17 @@ func (e *Endpoint) GetTicketV1(w http.ResponseWriter, r *http.Request) {
 		TicketID: ticketID,
 	})
 	if err != nil {
-		httpx.WriteError(w, r, err)
+		httpx.HandleErr(w, r, err)
 		return
 	}
 
-	httpx.WriteOKResponse(w, newTicketV1Response(ticket))
+	httpx.WriteOKResponse(w, TicketV1Response{
+		ID:          ticket.ID,
+		Title:       ticket.Title,
+		Description: ticket.Description,
+		Status:      string(ticket.Status),
+		Priority:    string(ticket.Priority),
+		AssigneeID:  ticket.AssigneeID,
+		CreatedAt:   ticket.CreatedAt,
+	})
 }

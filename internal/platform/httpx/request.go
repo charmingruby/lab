@@ -18,7 +18,7 @@ func ParseRequest[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 	var obj T
 
 	if err := json.UnmarshalRead(r.Body, &obj); err != nil {
-		WriteResponse(w, http.StatusBadRequest, map[string]string{
+		writeResponse(w, http.StatusBadRequest, map[string]string{
 			"message": fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
 		})
 
@@ -27,7 +27,7 @@ func ParseRequest[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 
 	val := validatorFromContext(r.Context())
 	if err := val.Validate(obj); err != nil {
-		WriteResponse(w, http.StatusBadRequest, map[string]string{
+		writeResponse(w, http.StatusBadRequest, map[string]string{
 			"message": fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
 		})
 

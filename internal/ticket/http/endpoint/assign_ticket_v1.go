@@ -30,7 +30,7 @@ func (e *Endpoint) AssignTicketV1(w http.ResponseWriter, r *http.Request) {
 		AssigneeID: request.AssigneeID,
 	})
 	if err != nil {
-		httpx.WriteError(w, r, err)
+		httpx.HandleErr(w, r, err)
 		return
 	}
 

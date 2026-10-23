@@ -31,7 +31,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		Priority:    request.Priority,
 	})
 	if err != nil {
-		httpx.WriteError(w, r, err)
+		httpx.HandleErr(w, r, err)
 		return
 	}
 
