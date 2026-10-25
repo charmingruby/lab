@@ -27,13 +27,13 @@ func MapToHTTP(err Error) HTTPError {
 		httpErr.Status = http.StatusConflict
 		return httpErr
 	case TypeValidation:
-		httpErr.Status = http.StatusBadRequest
+		httpErr.Status = http.StatusUnprocessableEntity
 		return httpErr
 	case TypeUnauthorized:
 		httpErr.Status = http.StatusUnauthorized
 		return httpErr
 	case TypeInternal, TypeIntegration:
-		httpErr.Status = http.StatusUnprocessableEntity
+		httpErr.Status = http.StatusInternalServerError
 		httpErr.Message = "Internal Server Error"
 		return httpErr
 	}

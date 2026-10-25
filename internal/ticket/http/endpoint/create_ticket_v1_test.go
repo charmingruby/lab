@@ -42,13 +42,13 @@ func TestCreateTicketV1(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid priority returns 400",
+			name: "invalid priority returns 422",
 			body: map[string]string{
 				"title":       "Test Ticket",
 				"description": "A description",
 				"priority":    "invalid",
 			},
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusUnprocessableEntity,
 			wantBodyCheck: func(t *testing.T, body map[string]any) {
 				assert.Equal(t, "invalid ticket priority", body["message"])
 			},
