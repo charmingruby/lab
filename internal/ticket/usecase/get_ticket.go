@@ -14,7 +14,7 @@ type GetTicketInput struct {
 func (u *Usecase) GetTicket(ctx context.Context, input GetTicketInput) (*model.Ticket, error) {
 	ticket, err := u.ticketRepo.FindByID(ctx, input.TicketID)
 	if err != nil {
-		return nil, customerr.Integration(err)
+		return nil, customerr.Internal("failed to find ticket by id", err)
 	}
 
 	if ticket == nil {

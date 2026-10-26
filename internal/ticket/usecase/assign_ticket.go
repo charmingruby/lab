@@ -23,7 +23,7 @@ func (u *Usecase) AssignTicket(
 	err := u.txManager.Transact(func(tx repository.Transaction) error {
 		ticket, err := tx.TicketRepo.FindByID(ctx, input.TicketID)
 		if err != nil {
-			return customerr.Integration(err)
+			return customerr.Internal("failed to find ticket by id on tx", err)
 		}
 
 		if ticket == nil {
@@ -35,7 +35,7 @@ func (u *Usecase) AssignTicket(
 		}
 
 		if err := tx.TicketRepo.Update(ctx, ticket); err != nil {
-			return customerr.Integration(err)
+			return customerr.Internal("failed to update ticket on tx", err)
 		}
 
 		assigneeID = input.AssigneeID

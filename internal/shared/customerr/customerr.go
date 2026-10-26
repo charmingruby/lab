@@ -11,7 +11,6 @@ const (
 	TypeInternal     = "INTERNAL"
 	TypeValidation   = "VALIDATION"
 	TypeConflict     = "CONFLICT"
-	TypeIntegration  = "INTEGRATION"
 	TypeUnauthorized = "UNAUTHORIZED"
 )
 
@@ -44,14 +43,6 @@ func NotFound(message string) *Error {
 
 func IsNotFound(err error) bool {
 	return IsType(err, TypeNotFound)
-}
-
-func Integration(err error) *Error {
-	return New(TypeIntegration, err.Error(), err)
-}
-
-func IsInvalidOperation(err error) bool {
-	return IsType(err, TypeIntegration)
 }
 
 func Conflict(message string) *Error {

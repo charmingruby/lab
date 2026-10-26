@@ -32,7 +32,7 @@ func MapToHTTP(err Error) HTTPError {
 	case TypeUnauthorized:
 		httpErr.Status = http.StatusUnauthorized
 		return httpErr
-	case TypeInternal, TypeIntegration:
+	case TypeInternal:
 		httpErr.Status = http.StatusInternalServerError
 		httpErr.Message = "Internal Server Error"
 		return httpErr

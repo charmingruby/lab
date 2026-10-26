@@ -23,7 +23,7 @@ func (u *Usecase) CreateTicket(
 	}
 
 	if err := u.ticketRepo.Create(ctx, ticket); err != nil {
-		return CreateTicketOutput{}, customerr.Integration(err)
+		return CreateTicketOutput{}, customerr.Internal("failed to create ticket", err)
 	}
 
 	return CreateTicketOutput{
