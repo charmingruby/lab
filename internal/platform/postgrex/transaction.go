@@ -1,6 +1,7 @@
 package postgrex
 
 import (
+	"context"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -11,8 +12,8 @@ type Querier interface {
 	Preparex(query string) (*sqlx.Stmt, error)
 }
 
-func RunInTx(db *sqlx.DB, fn func(*sqlx.Tx) error) error {
-	tx, err := db.Beginx()
+func RunInTx(ctx context.Context, db *sqlx.DB, fn func(*sqlx.Tx) error) error {
+	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}

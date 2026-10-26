@@ -172,7 +172,7 @@ func (u *Usecase) AssignTicket(
 	ctx context.Context,
 	input AssignTicketInput,
 ) error {
-	err := u.txManager.Transact(func(tx repository.Transaction) error {
+	err := u.txManager.Transact(ctx, func(tx repository.Transaction) error {
 		ticket, err := tx.TicketRepo.FindByID(ctx, input.TicketID)
 		if err != nil {
 			return customerr.Integration(err)

@@ -20,7 +20,7 @@ func (u *Usecase) AssignTicket(
 ) error {
 	var assigneeID string
 
-	err := u.txManager.Transact(func(tx repository.Transaction) error {
+	err := u.txManager.Transact(ctx, func(tx repository.Transaction) error {
 		ticket, err := tx.TicketRepo.FindByID(ctx, input.TicketID)
 		if err != nil {
 			return customerr.Internal("failed to find ticket by id on tx", err)

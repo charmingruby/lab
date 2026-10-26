@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/jmoiron/sqlx"
 
 	"github.com/charmingruby/lab/internal/platform/postgrex"
@@ -18,8 +20,8 @@ func NewTransactionManager(db *sqlx.DB) *TransactionManager {
 	return &TransactionManager{db: db}
 }
 
-func (t *TransactionManager) Transact(fn func(Transaction) error) error {
-	return postgrex.RunInTx(t.db, func(tx *sqlx.Tx) error {
+func (t *TransactionManager) Transact(ctx context.Context, fn func(Transaction) error) error {
+	return postgrex.RunInTx(ctx, t.db, func(tx *sqlx.Tx) error {
 		ticketRepo, err := NewTicketRepository(tx)
 		if err != nil {
 			return err
