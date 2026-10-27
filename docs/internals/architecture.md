@@ -65,12 +65,14 @@ endpoint → usecase → repository (concrete golden source)
 
 A mechanism is any transport the domain speaks:
 
-- **One mechanism** (default, e.g. HTTP only): flat — `internal/<domain>/http/` holds `endpoint/`, which owns its route registration in `New`. No `delivery/` wrapper.
-- **Two or more mechanisms**: nested — introduce `delivery/` as the parent. Move the existing `http/` to `delivery/http/`. Add the new mechanism beside it: `delivery/grpc/`, `delivery/queue/`.
+- **One mechanism**: flat, no `delivery/` wrapper. HTTP only → `internal/<domain>/http/`; listener only → `internal/<domain>/listener/`.
+- **Two or more mechanisms**: nested — `delivery/` becomes the parent and every mechanism moves inside it: `delivery/http/` beside `delivery/queue/` (listener packages inside), or `delivery/grpc/`. Create it only when a second mechanism appears.
 
 Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
 
-**Messaging is always a delivery mechanism.** A queue is a transport in both directions — a consumer is inbound (listens, like HTTP receives requests), a producer is outbound (delivers events to another system). Both live in `delivery/queue/` and both count toward the `delivery/` split: adding any queue to a domain that has HTTP forces the nested layout. Messaging never becomes a `client` integration.
+**Messaging is always a delivery mechanism.** A queue is a transport in both directions — a consumer is inbound (listens, like HTTP receives requests), a producer is outbound (delivers events to another system). Both count toward the `delivery/` split: a domain that speaks HTTP and a queue keeps both under `delivery/` (`delivery/http/` + `delivery/queue/`). Messaging never becomes a `client` integration.
+
+Inbound consumers are called **listeners** and are registered in `main`, one goroutine per topic. Shape and rules: [messaging.md](./messaging.md).
 
 ### Repository and client shape
 
@@ -87,4 +89,5 @@ Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to othe
 - [Glossary](./glossary.md) — domain terms with source file links
 - [Coding patterns](./coding-patterns.md) — complete implementation reference per layer
 - [External integrations](./external-integrations.md) — storage, email, cache, third-party APIs
+- [Messaging](./messaging.md) — event contracts, publishers, listeners, wiring in `main`
 - [Versioning](./versioning.md) — endpoint-level versioning

@@ -20,6 +20,7 @@ task
 - [Glossary](docs/internals/glossary.md)
 - [Coding patterns](docs/internals/coding-patterns.md)
 - [Commands reference](docs/internals/commands.md)
+- [Messaging](./internals/messaging.md)
 - [External integrations](docs/internals/external-integrations.md)
 - [Cross-module reads](docs/internals/cross-module-reads.md)
 - [Versioning](docs/internals/versioning.md)

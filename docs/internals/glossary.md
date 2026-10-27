@@ -61,11 +61,23 @@ Concrete reader over a usecase for cross-domain reads; consumer owns the interfa
 
 #### Flat layout
 
-Default for one mechanism (`http/endpoint/` with route registration in `New`). Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+Default: one mechanism, no wrapper. `http/endpoint/` with route registration in `New`, or `listener/on_<event>_v<n>/` for queue-only. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Nested layout
 
-For two or more mechanisms under `delivery/`. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+Two or more mechanisms under `delivery/` — e.g. `delivery/http/` + `delivery/queue/`. Only exists when a second transport appears. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+
+#### Listener
+
+Inbound queue consumer: `listener/on_<event>_v<n>/` with `Listener`, `New`, `Handle`; registered in `main`, one goroutine per topic. Rule: [messaging.md](./messaging.md#listener-inbound)
+
+#### Publisher
+
+Outbound queue writer, injected as the `Publisher` port. Rule: [messaging.md](./messaging.md#publisher-outbound)
+
+#### Event contract
+
+Versioned package holding the topic name + message struct, shared by publisher and listener. Rule: [messaging.md](./messaging.md#event-contracts)
 
 #### Transaction manager
 
@@ -90,5 +102,6 @@ Code exposed to the outside world. Absent here — not for internal infra.
 - If you see `port`, think "interface against an external provider."
 - If you see `adapter`, think "concrete implementation behind a client port."
 - If you see `usecase`, think "one business action, orchestrates everything."
-- If you see `delivery`, think "transport the domain speaks (HTTP, gRPC, queue)."
+- If you see `delivery`, think "wrapper that only exists when the domain speaks two or more transports (e.g. `delivery/http/` + `delivery/queue/`)."
+- If you see `listener`, think "inbound queue consumer registered in `main` — flat at `<domain>/listener/`, or `<domain>/delivery/queue/` once HTTP is also present."
 - If you see `<domain>.go`, think "module wiring + cross-domain read assembly."
