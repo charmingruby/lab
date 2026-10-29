@@ -78,51 +78,98 @@ The golden source in `internal/<domain>/repository/`. No interface, no subpackag
 **Rules:**
 
 - ✅ One concrete struct per aggregate, methods named by business meaning.
+- ✅ The repository imports exactly one `internal/platform/store/<provider>` toolkit; the golden source stays concrete.
+- ✅ Query text lives in named constants grouped in one `map[string]string`, prepared once by the constructor.
+- ✅ The constructor takes the store's querier (for SQL, `postgrex.Querier`), so the same repository works over a pool or a transaction.
+- ✅ Methods delegate to the store helpers (for SQL, `postgrex.One[T]`, `Many[T]`, `Exec`, `ExecReturning`).
 - ✅ All methods take `context.Context` first and return the model or count.
 - ✅ Not-found returns `(nil, nil)`.
 - ❌ No interface for the golden source — usecases take the concrete repository.
-- ❌ No inline queries in methods — always via prepared statements.
-
-Source: [internal/ticket/repository/ticket_repository.go](../../internal/ticket/repository/ticket_repository.go)
+- ❌ No inline queries in methods — always a prepared statement looked up by name.
+- ❌ No per-method timeout boilerplate — the helpers already bound reads and writes.
+- ❌ No repository interface for a second database — a new system of record means a new `internal/platform/store/<provider>` toolkit plus a new concrete repository.
 
 ```go
-// internal/ticket/repository/ticket_repository.go
-type TicketRepository struct {
-	db    postgrex.Querier
-	stmts map[string]*sqlx.Stmt
+// internal/<domain>/repository/<aggregate>_repository.go
+const (
+	find<Aggregate>ByIDQuery = "find <aggregate> by id"
+	update<Aggregate>Query   = "update <aggregate>"
+)
+
+var <aggregate>Queries = map[string]string{
+	find<Aggregate>ByIDQuery: `
+		SELECT * FROM <aggregates>
+		WHERE
+			id=$1 AND
+			deleted_at IS NULL`,
+	update<Aggregate>Query: `
+		UPDATE <aggregates>
+		SET
+			name=$1,
+			updated_at=$2
+		WHERE
+			id=$3 AND
+			deleted_at IS NULL`,
 }
 
-func NewTicketRepository(db postgrex.Querier) (*TicketRepository, error) {
-	// prepares every query in ticketQueries once
+type <Aggregate>Repository struct {
+	stmts *postgrex.Statements
 }
 
-func (r *TicketRepository) FindByID(ctx context.Context, id string) (*model.Ticket, error) {
-	ctx, cancel := context.WithTimeout(ctx, postgrex.DefaultReadTimeout)
-	defer cancel()
-
-	stmt, err := r.statement(findTicketByIDQuery)
+func New<Aggregate>Repository(db postgrex.Querier) (*<Aggregate>Repository, error) {
+	stmts, err := postgrex.Prepare(db, <aggregate>Queries)
 	if err != nil {
 		return nil, err
 	}
 
-	var ticket model.Ticket
-	if err := stmt.QueryRowxContext(ctx, id).StructScan(&ticket); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
+	return &<Aggregate>Repository{stmts: stmts}, nil
+}
 
-	return &ticket, nil
+func (r *<Aggregate>Repository) FindByID(ctx context.Context, id string) (*model.<Aggregate>, error) {
+	return postgrex.One[model.<Aggregate>](ctx, r.stmts, find<Aggregate>ByIDQuery, id)
+}
+
+func (r *<Aggregate>Repository) Update(ctx context.Context, aggregate *model.<Aggregate>) error {
+	return postgrex.Exec(ctx, r.stmts, update<Aggregate>Query,
+		aggregate.Name,
+		aggregate.UpdatedAt,
+		aggregate.ID,
+	)
 }
 ```
 
-Transactions group the concrete repositories in a `Transaction` struct, run through `TransactionManager.Transact`:
+Helper semantics:
+
+| Helper             | Use                                       |
+| ------------------ | ----------------------------------------- |
+| `One[T]`           | single row → `*T`; no rows → `(nil, nil)` |
+| `Many[T]`          | list of rows → `[]T` (never nil)          |
+| `Exec`             | write with no return                      |
+| `ExecReturning[T]` | write returning a single scalar           |
+
+Reads and writes get a bounded context inside the helper (`DefaultReadTimeout` / `DefaultWriteTimeout`). A missing statement name surfaces as `postgrex.ErrQueryPreparation`; use `postgrex.IsIntegrityViolation` to detect unique/FK violations.
+
+Repositories are tied to the store they use. There is no `store` port: a second database is a second `internal/platform/store/<provider>` toolkit plus a second concrete repository, not an adapter swap. `Statements` and the query helpers are SQL-specific; a non-SQL store exposes its own primitives.
+
+Transactions group the concrete repositories in a `Transaction` struct. `Transact` opens the transaction with `postgrex.RunInTx` and rebuilds each repository over the `*sqlx.Tx`:
 
 ```go
-// internal/ticket/repository/transaction_manager.go
+// internal/<domain>/repository/transaction_manager.go
 type Transaction struct {
-	TicketRepo *TicketRepository
+	<Aggregate>Repository *<Aggregate>Repository
+}
+
+func (t *TransactionManager) Transact(ctx context.Context, fn func(Transaction) error) error {
+	return postgrex.RunInTx(ctx, t.db, func(tx *sqlx.Tx) error {
+		aggregateRepo, err := New<Aggregate>Repository(tx)
+		if err != nil {
+			return err
+		}
+
+		return fn(Transaction{
+			<Aggregate>Repository: aggregateRepo,
+		})
+	})
 }
 ```
 
@@ -139,7 +186,7 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 - ✅ Domain outcomes map: missing → `NotFound`, duplicate → `Conflict`, invalid → `Validation`.
 - ✅ Atomic writes (multi-repo or read-modify-write) go through the transaction manager. See [architecture.md](./architecture.md#transaction-safety).
 - ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
-- ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Test the failure path with the `memory.go` fake, see [testing.md](./testing.md).
+- ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. If you write a test for the failure path, use the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
 - ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
 

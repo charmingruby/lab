@@ -26,11 +26,11 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `http/endpoint/` — request DTO + handler + versioned route registration (in `New`)
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
-  - `repository/` — the golden source, concrete (no interface — swapping it is trivial when needed)
+  - `repository/` — the golden source, concrete (no interface). Queries are prepared once in the constructor and executed through the store's helpers (for SQL, `postgrex.One`, `Many`, `Exec`, `ExecReturning`).
   - `client/` — outbound ports this domain consumes. Shape owned by [external-integrations.md](./external-integrations.md). Never hosts exposed reads — those live in `public/`.
   - `public/` — concrete readers for other domains. Shape owned by [cross-module-reads.md](./cross-module-reads.md).
 - `internal/shared/` — shared domain language: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
-- `internal/platform/` — app infrastructure with zero domain awareness: owns cross-cutting capabilities the app needs to run, e.g. config, observability (`logging`, metrics, tracing), transport (`httpx`), provider connections (`postgrex`, `awsx`, `kafka`). See the directory for the current set.
+- `internal/platform/` — app infrastructure with zero domain awareness: `config`, transport (`httpx`), observability (`o11y/<signal>`), system-of-record toolkit (`store/<provider>`), and broker ports/adapters (`messaging`). Not every capability is a port — only messaging is. Full taxonomy: [platform.md](./platform.md).
 - `pkg/` — reserved for code exposed to the outside world.
 
 ## Cross-domain communication
@@ -47,7 +47,7 @@ Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr
 
 ## Transaction safety
 
-Writes that must be atomic run through a transaction holding the repositories needed inside it. That covers multi-repo writes and single-aggregate read-modify-write (e.g. load → transition → save). Blind single-repo inserts with no prior read need no explicit transaction.
+Writes that must be atomic run through `TransactionManager.Transact`, which opens the transaction with `postgrex.RunInTx` and rebuilds every repository over the `*sqlx.Tx` before invoking the callback. That covers multi-repo writes and single-aggregate read-modify-write (e.g. load → transition → save). Blind single-repo inserts with no prior read need no explicit transaction.
 
 Source: [internal/ticket/repository/transaction_manager.go](../../internal/ticket/repository/transaction_manager.go)
 
@@ -66,27 +66,28 @@ endpoint → usecase → repository (concrete golden source)
 A mechanism is any transport the domain speaks:
 
 - **One mechanism**: flat, no `delivery/` wrapper. HTTP only → `internal/<domain>/http/`; listener only → `internal/<domain>/listener/`.
-- **Two or more mechanisms**: nested — `delivery/` becomes the parent and every mechanism moves inside it: `delivery/http/` beside `delivery/queue/` (listener packages inside), or `delivery/grpc/`. Create it only when a second mechanism appears.
+- **Two or more mechanisms**: nested — `delivery/` becomes the parent and every mechanism moves inside it: `delivery/http/` beside `delivery/queue/` (listener packages inside), or `delivery/grpc/`. Create it only when a second **inbound** mechanism appears; an outbound publisher does not count.
 
 Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
 
-**Messaging is always a delivery mechanism.** A queue is a transport in both directions — a consumer is inbound (listens, like HTTP receives requests), a producer is outbound (delivers events to another system). Both count toward the `delivery/` split: a domain that speaks HTTP and a queue keeps both under `delivery/` (`delivery/http/` + `delivery/queue/`). Messaging never becomes a `client` integration.
+**Messaging is always a delivery mechanism, but only inbound traffic triggers the `delivery/` split.** A consumer is inbound (listens, like HTTP receives requests) and counts as a transport. A producer is outbound (delivers events to another system) and stays injected as the `Publisher` port in the usecase — it does not receive traffic, so it never moves the module under `delivery/`. A domain that serves HTTP and consumes a queue keeps both under `delivery/` (`delivery/http/` + `delivery/queue/`); a domain that serves HTTP and only publishes stays flat (`http/`). Messaging never becomes a `client` integration.
 
 Inbound consumers are called **listeners** and are registered in `main`, one goroutine per topic. Shape and rules: [messaging.md](./messaging.md).
 
 ### Repository and client shape
 
-`repository/` is concrete — no port interface, no subpackages. For the `client/` port-adapter shape, see [external-integrations.md](./external-integrations.md) (contract in `client/<capability>.go`, one file per provider in `client/<capability>/`). Same capability-per-subpackage shape for messaging adapters inside `delivery/queue/`.
+`repository/` is concrete — no port interface, no subpackages. For the `client/` port-adapter shape, see [external-integrations.md](./external-integrations.md) (contract in `client/<capability>.go`, one file per provider in `client/<capability>/`). Messaging adapters live under `internal/platform/messaging/<direction>/<provider>.go`; inbound listener packages stay in the domain's delivery folder.
 
 ### External dependencies
 
-Storage, email, cache, third-party APIs — same shape as `client/`, raw connection in `internal/platform/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration. See [external-integrations.md](./external-integrations.md).
+Storage, email, cache, third-party APIs — same shape as `client/`, raw connection in `internal/platform/<capability>/<provider>/`, port scoped to who consumes it (domain-specific vs. shared). Messaging is excluded — it's a delivery mechanism, not an integration, and its ports/adapters live in `internal/platform/messaging/`. See [external-integrations.md](./external-integrations.md).
 
-Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to other domains from the same file. Shared domain language goes in `internal/shared/`. Raw clients plus app config go in `internal/platform/`.
+Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to other domains from the same file. Shared domain language goes in `internal/shared/`. Raw clients go in `internal/platform/`.
 
 ## Related
 
 - [Glossary](./glossary.md) — domain terms with source file links
+- [Platform](./platform.md) — capability taxonomy, stores, brokers, observability, config
 - [Coding patterns](./coding-patterns.md) — complete implementation reference per layer
 - [External integrations](./external-integrations.md) — storage, email, cache, third-party APIs
 - [Messaging](./messaging.md) — event contracts, publishers, listeners, wiring in `main`

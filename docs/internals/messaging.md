@@ -19,6 +19,8 @@ type Listener[T any] interface {
 }
 ```
 
+Both ports live in `internal/platform/messaging/`. Provider adapters are files: `internal/platform/messaging/publisher/<provider>.go` and `internal/platform/messaging/listener/<provider>.go`. The raw broker client lives under `internal/platform/messaging/broker/<provider>/`. Full layout: [platform.md](./platform.md#messaging).
+
 ## Event contracts
 
 The wire contract is shared by both sides, so it lives in its own package — one package per event version, one file per event:
@@ -85,10 +87,10 @@ One package per consumed event, versioned in the folder and package name:
 ```
 
 - `Listener` is the struct, `New(deps...) (*Listener, error)` the constructor, `Handle(ctx, <event>.Message) error` the only entry point the transport calls.
-- `New` validates what it can at boot (state machine, required dependencies) so bad wiring fails startup, not the first message.
-- The listener package never owns the wire type and never imports the broker SDK — the adapter decodes and calls `Handle`.
+- `New` validates what it can at boot so bad wiring fails startup, not the first message.
+- The listener package never owns the wire type and never imports the broker SDK — the listener adapter in `internal/platform/messaging/listener/<provider>.go` decodes and calls `Handle`.
 
-Listener only → keep it flat, no wrapper. HTTP and a queue in the same module → both move under `delivery/` (`delivery/http/`, `delivery/queue/` with the listener packages inside). See [architecture.md](./architecture.md#delivery-mechanism-layout).
+Listener only → keep it flat, no wrapper. HTTP and an inbound listener in the same module → both move under `delivery/` (`delivery/http/`, `delivery/queue/` with the listener packages inside). A publisher alone does not trigger the split: an HTTP-only module that publishes stays flat (`http/`). See [architecture.md](./architecture.md#delivery-mechanism-layout).
 
 ```go
 type Listener struct {
@@ -123,7 +125,7 @@ type Listeners struct {
 	OnOrderPaidV1    *on_order_paid_v1.Listener
 }
 
-func New(db *sqlx.DB, pub broker.Publisher) (*Listeners, error) {
+func New(db *sqlx.DB, pub messaging.Publisher) (*Listeners, error) {
 	// repositories, transaction manager, then each listener
 }
 ```
@@ -173,5 +175,6 @@ The same `ctx` from `signal.NotifyContext` stops every listener on SIGINT/SIGTER
 ## Related
 
 - [Architecture](./architecture.md#delivery-mechanism-layout) — where the mechanism folder lives
+- [Platform](./platform.md#messaging) — ports, adapters, and the raw broker client
 - [External integrations](./external-integrations.md) — why messaging is not a `client`
 - [Versioning](./versioning.md) — event versions at the caller-facing boundary

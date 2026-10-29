@@ -25,7 +25,7 @@ One business action; orchestrates model + repository + client ports. Rule: [codi
 
 #### Repository
 
-Concrete golden source, no interface. Rule: [coding-patterns.md](./coding-patterns.md#2-repository-golden-source-concrete)
+Concrete golden source over prepared statements and the `postgrex` helpers; no interface. Rule: [coding-patterns.md](./coding-patterns.md#2-repository-golden-source-concrete)
 
 #### Client (outbound port)
 
@@ -61,11 +61,11 @@ Concrete reader over a usecase for cross-domain reads; consumer owns the interfa
 
 #### Flat layout
 
-Default: one mechanism, no wrapper. `http/endpoint/` with route registration in `New`, or `listener/on_<event>_v<n>/` for queue-only. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+Default: one inbound mechanism, no wrapper. `http/endpoint/` with route registration in `New`, or `listener/on_<event>_v<n>/` for queue-only. An outbound publisher keeps the module flat. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Nested layout
 
-Two or more mechanisms under `delivery/` — e.g. `delivery/http/` + `delivery/queue/`. Only exists when a second transport appears. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
+Two or more inbound mechanisms under `delivery/` — e.g. `delivery/http/` + `delivery/queue/`. Only exists when a second inbound transport appears. Rule: [architecture.md](./architecture.md#delivery-mechanism-layout)
 
 #### Listener
 
@@ -91,7 +91,15 @@ Domain types, typed errors, ports + adapters used by 2+ domains. See directory: 
 
 #### platform
 
-App infrastructure with zero domain awareness: owns cross-cutting capabilities the app needs to run, e.g. config, observability (`logging`, metrics, tracing), transport (`httpx`), provider connections (`postgrex`, `awsx`, `kafka`). See directory: [internal/platform/](../../internal/platform/)
+App infrastructure with zero domain awareness: `config`, `httpx`, `o11y`, `store`, and `messaging`. Only messaging is port + adapter. Rule: [platform.md](./platform.md)
+
+#### store
+
+System-of-record toolkit under `internal/platform/store/<provider>/`; no port, and the repository stays concrete. Rule: [platform.md](./platform.md#store)
+
+#### config
+
+Typed environment configuration loaded at boot from `internal/platform/config/`. Rule: [platform.md](./platform.md#config)
 
 #### pkg (reserved)
 
