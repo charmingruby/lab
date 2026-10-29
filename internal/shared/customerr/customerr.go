@@ -49,32 +49,16 @@ func Conflict(message string) *Error {
 	return New(TypeConflict, message, nil)
 }
 
-func IsConflict(err error) bool {
-	return IsType(err, TypeConflict)
-}
-
 func Validation(message string) *Error {
 	return New(TypeValidation, message, nil)
-}
-
-func IsValidation(err error) bool {
-	return IsType(err, TypeValidation)
 }
 
 func Internal(message string, err error) *Error {
 	return New(TypeInternal, message, err)
 }
 
-func IsInternal(err error) bool {
-	return IsType(err, TypeInternal)
-}
-
 func Unauthorized(message string, err error) *Error {
 	return New(TypeUnauthorized, message, err)
-}
-
-func IsUnauthorized(err error) bool {
-	return IsType(err, TypeUnauthorized)
 }
 
 func (e *Error) WithDetails(details any) *Error {

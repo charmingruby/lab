@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/charmingruby/lab/internal/platform/logging"
+	"github.com/charmingruby/lab/internal/platform/o11y/logging"
 	"github.com/charmingruby/lab/internal/ticket/client/notifier"
 	"github.com/charmingruby/lab/internal/ticket/repository"
 	"github.com/charmingruby/lab/internal/ticket/usecase"

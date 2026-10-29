@@ -13,8 +13,8 @@ import (
 
 	"github.com/charmingruby/lab/internal/platform/config"
 	"github.com/charmingruby/lab/internal/platform/httpx"
-	"github.com/charmingruby/lab/internal/platform/logging"
-	"github.com/charmingruby/lab/internal/platform/postgrex"
+	"github.com/charmingruby/lab/internal/platform/o11y/logging"
+	"github.com/charmingruby/lab/internal/platform/store/postgrex"
 	"github.com/charmingruby/lab/internal/ticket"
 )
 

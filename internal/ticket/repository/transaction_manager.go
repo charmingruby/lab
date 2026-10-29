@@ -3,9 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/charmingruby/lab/internal/platform/store/postgrex"
 	"github.com/jmoiron/sqlx"
-
-	"github.com/charmingruby/lab/internal/platform/postgrex"
 )
 
 type Transaction struct {

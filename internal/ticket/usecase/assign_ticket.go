@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/charmingruby/lab/internal/platform/logging"
+	"github.com/charmingruby/lab/internal/platform/o11y/logging"
 	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/client"
 	"github.com/charmingruby/lab/internal/ticket/repository"

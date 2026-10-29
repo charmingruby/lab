@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	pg "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/charmingruby/lab/internal/platform/postgrex"
+	"github.com/charmingruby/lab/internal/platform/store/postgrex"
 )
 
 const (
