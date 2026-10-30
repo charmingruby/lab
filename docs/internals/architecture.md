@@ -20,6 +20,7 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `http/endpoint/` — request DTO + handler + versioned route registration (in `New`)
   - `usecase/` — business actions, one file per use case
   - `model/` — entities, invariants, state changes
+  - `event/` — module-owned versioned event contracts, outside `delivery/`; contracts used by two or more domains live in `internal/shared/event/`. Shape owned by [messaging.md](./messaging.md#event-contracts).
   - `repository/` — the golden source, concrete (no interface). Queries are prepared once in the constructor and executed through the store's helpers (for SQL, `postgrex.One`, `Many`, `Exec`, `ExecReturning`).
   - `client/` — outbound ports this domain consumes. Shape owned by [external-integrations.md](./external-integrations.md). Never hosts exposed reads — those live in `public/`.
   - `public/` — concrete readers for other domains. Shape owned by [cross-module-reads.md](./cross-module-reads.md).
@@ -60,11 +61,11 @@ endpoint → usecase → repository (concrete golden source)
 A mechanism is any transport the domain speaks:
 
 - **One mechanism**: flat, no `delivery/` wrapper. HTTP only → `internal/<domain>/http/`; listener only → `internal/<domain>/listener/`.
-- **Two or more mechanisms**: nested — `delivery/` becomes the parent and every mechanism moves inside it: `delivery/http/` beside `delivery/queue/` (listener packages inside), or `delivery/grpc/`. Create it only when a second **inbound** mechanism appears; an outbound publisher does not count.
+- **Two or more mechanisms**: nested — `delivery/` becomes the parent and every mechanism moves inside it: `delivery/http/` beside `delivery/listener/on_<event>_v<n>/`, or `delivery/grpc/`. Do not add a `queue/` wrapper around listeners. Create `delivery/` only when a second **inbound** mechanism appears; an outbound publisher does not count.
 
-Everything bound to a transport (DTOs, protos, endpoints, listeners, event schemas) lives in its own mechanism folder and is wired in `<domain>/<domain>.go`.
+Transport handlers and their DTOs/protos live in their mechanism folder and are wired in `<domain>/<domain>.go`. Event contracts are the exception: they stay at the module root in `event/`, or in `internal/shared/event/` when shared across domains, never inside `delivery/` or `listener/`.
 
-**Messaging is always a delivery mechanism, but only inbound traffic triggers the `delivery/` split.** A consumer is inbound (listens, like HTTP receives requests) and counts as a transport. A producer is outbound (delivers events to another system) and stays injected as the `Publisher` port in the usecase — it does not receive traffic, so it never moves the module under `delivery/`. A domain that serves HTTP and consumes a queue keeps both under `delivery/` (`delivery/http/` + `delivery/queue/`); a domain that serves HTTP and only publishes stays flat (`http/`). Messaging never becomes a `client` integration.
+**Messaging is always a delivery mechanism, but only inbound traffic triggers the `delivery/` split.** A consumer is inbound (listens, like HTTP receives requests) and counts as a transport. A producer is outbound (delivers events to another system) and stays injected as the `Publisher` port in the usecase — it does not receive traffic, so it never moves the module under `delivery/`. A domain that serves HTTP and consumes a queue keeps both under `delivery/` (`delivery/http/` + `delivery/listener/`); a domain that serves HTTP and only publishes stays flat (`http/`). Messaging never becomes a `client` integration.
 
 Inbound consumers are called **listeners** and are registered in `main`, one goroutine per topic. Shape and rules: [messaging.md](./messaging.md).
 

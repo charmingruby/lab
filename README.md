@@ -11,11 +11,13 @@ A place to validate Go ideas quickly. Copy a domain, tweak, and see if it works.
 ```sh
 cp .env.example .env
 docker compose up -d
+task mig:up
 task
 ```
 
 ## Docs
 
+- [Ping pong: HTTP → NATS → PostgreSQL](docs/project/pingpong.md)
 - [Architecture overview](docs/internals/architecture.md)
 - [Platform](docs/internals/platform.md)
 - [Glossary](docs/internals/glossary.md)

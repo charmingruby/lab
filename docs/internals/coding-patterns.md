@@ -4,6 +4,29 @@ Implementation reference for a domain feature. Rules below are the pattern; code
 
 > **Module structure**: see [architecture.md](./architecture.md).
 
+## Readability
+
+- Separate logical steps with a blank line: setup, validation, domain work, persistence/publishing, and response/return. This applies to constructors, handlers, usecases, adapters, and tests.
+- Keep an operation and its immediate error check together (`value, err := ...` followed by `if err != nil`). After that error-handling block, add a blank line before the next logical step or final return.
+- Keep tightly related assignments together; do not put a blank line after every statement. Prefer whitespace over comments that merely label each step.
+
+```go
+func NewTicketRepository(db postgrex.Querier) (*TicketRepository, error) {
+	stmts, err := postgrex.Prepare(db, ticketQueries)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TicketRepository{stmts: stmts}, nil
+}
+```
+
+## Constructors
+
+- Trust injected dependencies. Do not add `nil` guards for usecases, repositories, publishers, clients, or other dependencies; the composition root owns correct wiring.
+- A constructor that only assigns dependencies returns `*Type`, not `(*Type, error)`. Return an error only for genuinely fallible initialization, such as preparing database statements or opening a connection.
+- This does not remove domain-invariant validation in model constructors or validation of external input and configuration.
+
 ## 1. Model
 
 Constructor, invariants, state changes as explicit methods.
@@ -188,10 +211,12 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 - ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
 - ✅ Best-effort side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Best-effort describes failure handling, not asynchronous execution. If you write a test for the failure path, use the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
-- ✅ Endpoints/listeners map inbound DTOs to usecase inputs. Usecases may construct outbound events using contract types defined outside the usecase package; event contracts are never defined in the usecase package.
+- ✅ Endpoints/listeners map inbound DTOs to usecase inputs. Usecases may construct outbound events using contract types from the module's root `event/` or `internal/shared/event/`, never from a delivery or usecase package. Contract ownership: [messaging.md](./messaging.md#event-contracts).
 - ❌ No raw storage handle — the concrete repository only.
 
 Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
+
+Every usecase method requires adjacent focused tests; delivery tests do not replace them. See [testing.md](./testing.md#required-coverage-and-placement).
 
 Simple case — `create_ticket.go`:
 
@@ -262,6 +287,8 @@ One delivery mechanism. Parse the request, call the use case, write the response
 
 Source: [internal/ticket/http/endpoint/endpoint.go](../../internal/ticket/http/endpoint/endpoint.go), [internal/ticket/http/endpoint/create_ticket_v1.go](../../internal/ticket/http/endpoint/create_ticket_v1.go)
 
+Every endpoint method requires adjacent transport tests, even when it only delegates to a usecase. See [testing.md](./testing.md#required-coverage-and-placement).
+
 ```go
 // internal/ticket/http/endpoint/endpoint.go
 func New(r chi.Router, uc *usecase.Usecase) *Endpoint {
@@ -318,6 +345,7 @@ Composition root. Build the transaction manager, repositories, usecases; hand th
 - ✅ One composition root per module, with constructors for its transports and public readers as needed.
 - ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in usecases — declarative, top-down.
+- ❌ No tests at the module root or direct tests of this composition file. Test behavior in its usecase and delivery packages, as required by [testing.md](./testing.md#required-coverage-and-placement).
 
 Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 

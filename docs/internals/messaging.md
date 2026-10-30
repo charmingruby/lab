@@ -23,16 +23,21 @@ Both ports live in `internal/platform/messaging/`. Provider adapters are files: 
 
 ## Event contracts
 
-The wire contract is shared by both sides, so it lives in its own package — one package per event version, one file per event:
+The wire contract is shared by publisher and listener, so it lives in its own package — one package per event version, one file per event. Sharing the two directions within one module does not make it a cross-domain contract:
+
+- Module-owned contract: `internal/<domain>/event/<event>_v<n>/`, at the module root regardless of the delivery layout.
+- Contract used by two or more domains: `internal/shared/event/<event>_v<n>/`.
+- Never place event contracts inside `delivery/`, `http/`, or `listener/`.
 
 ```
-event/
-  <event>_v<n>/
-    <event>_v<n>.go     # topic/queue name + Message
+internal/<domain>/
+  event/
+    <event>_v<n>/
+      <event>_v<n>.go     # topic/queue name + Message
 ```
 
 ```go
-// event/order_created_v1/order_created_v1.go
+// internal/<domain>/event/order_created_v1/order_created_v1.go
 package order_created_v1
 
 const Topic = "orders.created.v1"
@@ -86,23 +91,20 @@ One package per consumed event, versioned in the folder and package name. A brea
       ...               # what's needed
 ```
 
-- `Listener` is the struct, `New(deps...) (*Listener, error)` the constructor, `Handle(ctx, <event>.Message) error` the only entry point the transport calls.
-- `New` validates what it can at boot so bad wiring fails startup, not the first message.
+- `Listener` is the struct, `New(deps...) *Listener` the constructor, `Handle(ctx, <event>.Message) error` the only entry point the transport calls.
+- `New` assigns injected dependencies without checking them for `nil`; correct wiring belongs to the composition root. Return an error only if construction performs an operation that can actually fail, not for dependency-presence guards. See [coding-patterns.md](./coding-patterns.md#constructors).
 - The listener package never owns the wire type and never imports the broker SDK — the listener adapter in `internal/platform/messaging/listener/<provider>.go` decodes and calls `Handle`.
 - Keep `Handle` thin: map the event to usecase input and delegate. Repositories, transactions, and business state machines stay behind the usecase. Broker types stay inside the adapter.
 
-Listener only → keep it flat, no wrapper. HTTP and an inbound listener in the same module → both move under `delivery/` (`delivery/http/`, `delivery/queue/` with the listener packages inside). A publisher alone does not trigger the split: an HTTP-only module that publishes stays flat (`http/`). See [architecture.md](./architecture.md#delivery-mechanism-layout).
+Listener only → keep it flat at `<module>/listener/on_<event>_v<n>/`. HTTP and an inbound listener in the same module → use `<module>/delivery/http/` and `<module>/delivery/listener/on_<event>_v<n>/`, without an intermediate `queue/` folder. A publisher alone does not trigger the split: an HTTP-only module that publishes stays flat (`http/`). Events remain outside the delivery folders in either layout. See [architecture.md](./architecture.md#delivery-mechanism-layout).
 
 ```go
 type Listener struct {
 	uc *usecase.Usecase
 }
 
-func New(uc *usecase.Usecase) (*Listener, error) {
-	if uc == nil {
-		return nil, errors.New("usecase is required")
-	}
-	return &Listener{uc: uc}, nil
+func New(uc *usecase.Usecase) *Listener {
+	return &Listener{uc: uc}
 }
 
 func (l *Listener) Handle(ctx context.Context, message order_created_v1.Message) error {
@@ -115,6 +117,8 @@ func (l *Listener) Handle(ctx context.Context, message order_created_v1.Message)
 - Returning an error stops consumption and skips the ack/commit → the message is redelivered. Use it for infrastructure failures and unparseable messages.
 - A failure scoped to one record is logged and skipped inside `Handle`; the message is committed and the batch continues.
 - Delivery is at-least-once, so `Handle` must be idempotent (upserts, replace-by-key, dedupe).
+
+Every listener's `Handle` requires tests beside its implementation, including success, failure/skip behavior, and idempotency. Broker decode and ack/redelivery semantics belong in the adapter's tests. Usecase tests do not replace listener tests. Full coverage and placement rules: [testing.md](./testing.md).
 
 ## Wiring in main
 
