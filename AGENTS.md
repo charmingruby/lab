@@ -32,7 +32,7 @@ endpoint → usecase → repository (concrete golden source)
 
 Canonical spine — see [docs/internals/architecture.md](docs/internals/architecture.md#domain-structure).
 
-This is a POC: writing tests is optional, not a requirement. When you do write one for a tricky piece of logic, follow the conventions in [docs/internals/testing.md](docs/internals/testing.md).
+Follow the test conventions in [docs/internals/testing.md](docs/internals/testing.md).
 
 Each domain lives under `internal/<domain>/`. Shared domain language lives in `internal/shared/` (domain types and ports + adapters used by two or more domains — see the directory for the current set). Internal infrastructure lives in `internal/platform/` (raw clients and transport/config helpers with zero domain awareness — see the directory for the current set). `pkg/` is reserved for code exposed to the outside world (e.g. public API contract).
 
@@ -54,7 +54,7 @@ CRITICAL: Only load the reference below that matches your current task. Do NOT r
 | Read another module's data                                                                      | [docs/internals/cross-module-reads.md](docs/internals/cross-module-reads.md)                       |
 | Understand the architecture or runtime flow                                                     | [docs/internals/architecture.md](docs/internals/architecture.md)                                   |
 | Look up a term or find where code lives                                                         | [docs/internals/glossary.md](docs/internals/glossary.md)                                           |
-| Verify a change (tests are optional in this POC)                                                | [docs/internals/testing.md](docs/internals/testing.md)                                             |
+| Verify a change                                                                               | [docs/internals/testing.md](docs/internals/testing.md)                                             |
 
 ## Plans and work artifacts
 
