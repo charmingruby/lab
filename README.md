@@ -1,6 +1,6 @@
 # Lab
 
-A lean Go foundation for proving ideas fast.
+A lean Go foundation to build on, AI-friendly by design.
 
 ## What is this?
 
