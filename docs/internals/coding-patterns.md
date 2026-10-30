@@ -147,7 +147,7 @@ Helper semantics:
 | `Exec`             | write with no return                      |
 | `ExecReturning[T]` | write returning a single scalar           |
 
-Reads and writes get a bounded context inside the helper (`DefaultReadTimeout` / `DefaultWriteTimeout`). A missing statement name surfaces as `postgrex.ErrQueryPreparation`; use `postgrex.IsIntegrityViolation` to detect unique/FK violations.
+Reads and writes get a bounded context inside the helper (`DefaultReadTimeout` / `DefaultWriteTimeout`). A missing statement name surfaces as `postgrex.ErrQueryPreparation`.
 
 Repositories are tied to the store they use. There is no `store` port: a second database is a second `internal/platform/store/<provider>` toolkit plus a second concrete repository, not an adapter swap. `Statements` and the query helpers are SQL-specific; a non-SQL store exposes its own primitives.
 
@@ -182,13 +182,14 @@ One file per implemented use case, plus the concrete `Usecase` struct in `usecas
 **Rules:**
 
 - ✅ Input/output structs live in the usecase file, named `<Verb><Resource>Input` / `<Verb><Resource>Output`.
-- ✅ Infra failures wrap as integration errors.
+- ✅ Infra failures wrap as internal errors with `customerr.Internal(message, err)`.
 - ✅ Domain outcomes map: missing → `NotFound`, duplicate → `Conflict`, invalid → `Validation`.
 - ✅ Atomic writes (multi-repo or read-modify-write) go through the transaction manager. See [architecture.md](./architecture.md#transaction-safety).
 - ✅ One `*Usecase` built with `New(...)`, shared by endpoints and public readers.
-- ✅ Non-blocking side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. If you write a test for the failure path, use the `memory.go` fake, see [testing.md](./testing.md).
+- ✅ Best-effort side effects (e.g. notifier) stay outside the transaction and never fail the usecase — log and continue. Best-effort describes failure handling, not asynchronous execution. If you write a test for the failure path, use the `memory.go` fake, see [testing.md](./testing.md).
 - ❌ No interface on the usecase — a single implementation needs no port.
-- ❌ No transport types in the usecase. ❌ No raw storage handle — the concrete repository only.
+- ✅ Endpoints/listeners map inbound DTOs to usecase inputs. Usecases may construct outbound events using contract types defined outside the usecase package; event contracts are never defined in the usecase package.
+- ❌ No raw storage handle — the concrete repository only.
 
 Source: [internal/ticket/usecase/](../../internal/ticket/usecase/), [internal/ticket/usecase/usecase.go](../../internal/ticket/usecase/usecase.go)
 
@@ -205,7 +206,7 @@ func (u *Usecase) CreateTicket(
 	}
 
 	if err := u.ticketRepo.Create(ctx, ticket); err != nil {
-		return CreateTicketOutput{}, customerr.Integration(err)
+		return CreateTicketOutput{}, customerr.Internal("failed to create ticket", err)
 	}
 
 	return CreateTicketOutput{ID: ticket.ID}, nil
@@ -222,7 +223,7 @@ func (u *Usecase) AssignTicket(
 	err := u.txManager.Transact(ctx, func(tx repository.Transaction) error {
 		ticket, err := tx.TicketRepo.FindByID(ctx, input.TicketID)
 		if err != nil {
-			return customerr.Integration(err)
+			return customerr.Internal("failed to find ticket", err)
 		}
 
 		if ticket == nil {
@@ -234,7 +235,7 @@ func (u *Usecase) AssignTicket(
 		}
 
 		if err := tx.TicketRepo.Update(ctx, ticket); err != nil {
-			return customerr.Integration(err)
+			return customerr.Internal("failed to update ticket", err)
 		}
 
 		return nil
@@ -298,7 +299,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		Priority:    request.Priority,
 	})
 	if err != nil {
-		httpx.WriteError(w, r, err)
+		httpx.HandleErr(w, r, err)
 		return
 	}
 

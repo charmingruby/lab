@@ -61,7 +61,7 @@ type Message struct {
 
 - The usecase depends on the `Publisher` port, never on the broker SDK.
 - The key is the ordering key: the same aggregate ID keeps related events on the same partition.
-- A publish failure is mapped like any integration failure (`Integration`/`Internal`). If publishing must not fail the usecase, treat it as a non-blocking side effect and log it.
+- A publish failure is mapped to an internal error with `customerr.Internal(message, err)`. If publishing must not fail the usecase, treat it as a best-effort side effect and log it. Best-effort describes failure handling, not asynchronous execution.
 - The concrete adapter is built in `main` and passed into the module's composition root.
 
 ```go
@@ -70,7 +70,7 @@ if err := u.pub.Publish(ctx, order_created_v1.Topic, order.ID, order_created_v1.
 	OrderID: order.ID,
 	Items:   items,
 }); err != nil {
-	return customerr.Integration(err)
+	return customerr.Internal("failed to publish order created", err)
 }
 ```
 
