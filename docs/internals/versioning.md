@@ -1,11 +1,13 @@
 # Versioning
 
-Same shape for any `<domain>` and any delivery mechanism.
+Version caller-facing boundaries for any `<domain>`; the endpoint layout below applies to HTTP.
 
-- **Unit of versioning: the endpoint, not the folder.** A breaking change adds a new endpoint beside the old one. The rest stays on the old version.
+- **For HTTP, version the endpoint, not the folder.** A breaking change adds a new endpoint beside the old one. The rest stays on the old version.
 - **The registrar never carries a version suffix.** It's the single place mapping every endpoint version to its route. Deprecate the old version by removing its registration once callers migrate — don't mutate its behavior in place.
 - **Every protocol versions at the caller-facing boundary**: HTTP registers a new route, gRPC a new service, messaging a new event/queue version for producers and consumers alike.
 - **Never version `model/`, `usecase/`, or `repository/`.** These stay single-version regardless of how many API versions call them.
+
+Messaging versions event and listener packages as described in [messaging.md](./messaging.md#event-contracts); the HTTP folder rule does not apply to those packages.
 
 Source: [internal/ticket/http/endpoint/](../../internal/ticket/http/endpoint/), [internal/ticket/http/endpoint/endpoint.go](../../internal/ticket/http/endpoint/endpoint.go)
 

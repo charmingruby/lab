@@ -43,7 +43,7 @@ Handler that parses, calls usecase, writes response. Rule: [coding-patterns.md](
 
 #### Port
 
-Interface decoupling usecase from externals; outbound only. Shape: [external-integrations.md](./external-integrations.md#shape-canonical)
+Interface defining a boundary for consumed integrations, cross-domain reads, or messaging (inbound and outbound). Rules: [external-integrations.md](./external-integrations.md#shape-canonical), [cross-module-reads.md](./cross-module-reads.md), [messaging.md](./messaging.md).
 
 #### Delivery mechanism
 

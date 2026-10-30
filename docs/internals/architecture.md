@@ -4,13 +4,7 @@ Ports and adapters. Every domain is a self-contained module with the same depend
 
 ## Request lifecycle
 
-Inbound transport resolves to an endpoint, which follows the domain spine (see [Domain structure](#domain-structure)):
-
-```
-delivery → endpoint → usecase → model
-                           → repository (concrete golden source)
-                           → client port → adapter
-```
+Inbound transport resolves to an endpoint or listener, which delegates to a usecase following the [domain spine](#domain-structure).
 
 ## Domain wiring
 

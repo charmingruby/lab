@@ -76,35 +76,37 @@ if err := u.pub.Publish(ctx, order_created_v1.Topic, order.ID, order_created_v1.
 
 ## Listener (inbound)
 
-One package per consumed event, versioned in the folder and package name:
+One package per consumed event, versioned in the folder and package name. A breaking payload change adds `on_<event>_v2` rather than mutating v1:
 
 ```
 <module>/
   listener/
     on_<event>_v<n>/
       listener.go       # Listener + New + Handle
-      ...               # parsing, state machine, persistence for this event
+      ...               # what's needed
 ```
 
 - `Listener` is the struct, `New(deps...) (*Listener, error)` the constructor, `Handle(ctx, <event>.Message) error` the only entry point the transport calls.
 - `New` validates what it can at boot so bad wiring fails startup, not the first message.
 - The listener package never owns the wire type and never imports the broker SDK — the listener adapter in `internal/platform/messaging/listener/<provider>.go` decodes and calls `Handle`.
+- Keep `Handle` thin: map the event to usecase input and delegate. Repositories, transactions, and business state machines stay behind the usecase. Broker types stay inside the adapter.
 
 Listener only → keep it flat, no wrapper. HTTP and an inbound listener in the same module → both move under `delivery/` (`delivery/http/`, `delivery/queue/` with the listener packages inside). A publisher alone does not trigger the split: an HTTP-only module that publishes stays flat (`http/`). See [architecture.md](./architecture.md#delivery-mechanism-layout).
 
 ```go
 type Listener struct {
-	repo      *repository.OrderRepository
-	txManager *repository.TransactionManager
-	machine   *fsm.FSM[machineState]
+	uc *usecase.Usecase
 }
 
-func New(repo *repository.OrderRepository, txManager *repository.TransactionManager) (*Listener, error) {
-	// build + validate
+func New(uc *usecase.Usecase) (*Listener, error) {
+	if uc == nil {
+		return nil, errors.New("usecase is required")
+	}
+	return &Listener{uc: uc}, nil
 }
 
 func (l *Listener) Handle(ctx context.Context, message order_created_v1.Message) error {
-	// one fresh run state per message, then delegate
+	return l.uc.ProcessOrder(ctx, usecase.ProcessOrderInput{OrderID: message.OrderID})
 }
 ```
 
@@ -126,7 +128,7 @@ type Listeners struct {
 }
 
 func New(db *sqlx.DB, pub messaging.Publisher) (*Listeners, error) {
-	// repositories, transaction manager, then each listener
+	// repositories, transaction manager, usecase, then each listener
 }
 ```
 
@@ -157,20 +159,6 @@ go func() {
 ```
 
 The same `ctx` from `signal.NotifyContext` stops every listener on SIGINT/SIGTERM. A failing listener pushes to the error channel so `main` exits non-zero instead of dying silently. Resource cleanup (DB, broker clients) stays in `shutdown`.
-
-## Rules
-
-- ✅ A subscriber is a `listener`, in `listener/on_<event>_v<n>/`, with `Listener`, `New`, `Handle`.
-- ✅ Event contracts live in their own versioned package, with the topic name as a constant.
-- ✅ One listener package per event version; a breaking payload change adds `on_<event>_v2`, it never mutates v1.
-- ✅ Register each listener in `main`, one goroutine per topic, sharing the signal context.
-- ✅ Report listener failures through an error channel so `main` exits non-zero.
-- ✅ Keep `Handle` thin: decoding stays in the adapter, business work goes to the module's usecase or state machine.
-- ❌ Never call `Listen` inline in `main` — it never returns and the process stops booting.
-- ❌ Never start listeners inside `<module>.go` or a usecase — the composition root only builds.
-- ❌ Never put a listener behind a `client/` port or a `repository` — it is inbound delivery.
-- ❌ Never run two topics in one goroutine — the second one starves.
-- ❌ Never leak broker types (message, offset, headers) past the adapter.
 
 ## Related
 

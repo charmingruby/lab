@@ -9,7 +9,7 @@
 
 ## Prerequisites
 
-Each case needs a fresh, isolated, real golden source. See `test/container/` and `db/migration` for the setup.
+Each case that uses persistence needs a fresh, isolated, real golden source. Model-only tests need no infrastructure. See `test/container/` and `db/migration` for the persistence setup.
 
 ## Test conventions
 
@@ -25,5 +25,5 @@ Each case needs a fresh, isolated, real golden source. See `test/container/` and
 ## Verifying
 
 - Smallest proof that the change works: run the tests you touched with `go test ./internal/<domain>/... -run TestName -race` (needs a real golden source — container or `TEST_DATABASE_URL`).
-- Targeted lint: `task lint` on the scope you changed. Do not run repo-wide lint unless asked.
+- Lint: run `task lint`. It formats Go files and lints the entire repository; inspect any resulting changes.
 - Backend behavior changes ship with focused tests for that behavior.

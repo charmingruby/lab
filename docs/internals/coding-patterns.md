@@ -314,7 +314,7 @@ Composition root. Build the transaction manager, repositories, usecases; hand th
 
 **Rules:**
 
-- ✅ One constructor per module.
+- ✅ One composition root per module, with constructors for its transports and public readers as needed.
 - ✅ Concrete repository + client adapters wired here.
 - ❌ No wiring in usecases — declarative, top-down.
 

@@ -63,15 +63,3 @@ The port is never mocked. Each test injects a real implementation, whichever is 
 
 - **The real integration** — a local/sandboxed provider, same philosophy as the golden source via `test/container/`.
 - **The `memory.go` fake** — the trivial fallback when a real integration isn't worth it: an in-memory fake with real state and injectable errors, never call expectations.
-
-## Rules
-
-- ✅ Every external integration is a `client` port — never a `repository`. The golden source has no port at all.
-- ✅ Raw clients live in `internal/platform/<capability>/<provider>/`, with zero domain awareness.
-- ✅ One domain only → port + adapters inside that domain's `client/`.
-- ✅ Two or more domains → port + adapter in `internal/shared/client/<capability>/`.
-- ✅ Usecases depend on the port interface, never on the `internal/platform/` client or the SDK directly. Tests inject a real implementation (real integration or `memory.go` fake) — never a mock.
-- ❌ Never call a `internal/platform/` client directly from a usecase — always through a `client` adapter.
-- ❌ Never duplicate the same integration's port across domains once a second domain needs it — move it to `internal/shared/client/`.
-- ❌ Never model an external integration as a `repository` — it isn't the domain's source of truth.
-- ❌ Never model a queue as a `client` integration — messaging ports and adapters live in `internal/platform/messaging/`.
