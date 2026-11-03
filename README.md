@@ -17,7 +17,6 @@ task
 
 ## Docs
 
-- [Ping pong: HTTP → NATS → PostgreSQL](docs/project/pingpong.md)
 - [Architecture overview](docs/internals/architecture.md)
 - [Platform](docs/internals/platform.md)
 - [Glossary](docs/internals/glossary.md)
