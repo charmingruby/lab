@@ -19,6 +19,7 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
   - `<domain>.go` — composition root (wires everything, including cross-domain read assembly)
   - `http/endpoint/` — request DTO + handler + versioned route registration (in `New`)
   - `usecase/` — business actions, one file per use case
+  - `ai/` — optional module-local agents, runtime, tool adapters, and prompts; conventions in [ai.md](./ai.md).
   - `model/` — entities, invariants, state changes
   - `event/` — module-owned versioned event contracts, outside `delivery/`; contracts used by two or more domains live in `internal/shared/event/`. Shape owned by [messaging.md](./messaging.md#event-contracts).
   - `repository/` — the golden source, concrete (no interface). Queries are prepared once in the constructor and executed through the store's helpers (for SQL, `postgrex.One`, `Many`, `Exec`, `ExecReturning`).
@@ -56,6 +57,8 @@ endpoint → usecase → repository (concrete golden source)
                    → model
 ```
 
+Cohesive internal components may support usecases without becoming new architectural layers; module-local AI execution follows [ai.md](./ai.md).
+
 ### Delivery mechanism layout
 
 A mechanism is any transport the domain speaks:
@@ -85,5 +88,6 @@ Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to othe
 - [Platform](./platform.md) — capability taxonomy, stores, brokers, observability, config
 - [Coding patterns](./coding-patterns.md) — complete implementation reference per layer
 - [External integrations](./external-integrations.md) — storage, email, cache, third-party APIs
+- [AI capabilities](./ai.md) — module-local agents, prompts, tool calling, inference providers, and MCP
 - [Messaging](./messaging.md) — event contracts, publishers, listeners, wiring in `main`
 - [Versioning](./versioning.md) — endpoint-level versioning

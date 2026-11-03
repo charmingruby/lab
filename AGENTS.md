@@ -16,7 +16,7 @@ Use the terminology defined in [docs/internals/glossary.md](docs/internals/gloss
 
 1. **Never skip the usecase.** The usecase owns business validation, transaction boundaries, and error mapping. Skipping it means scattered logic, no transaction safety, and tests that cannot isolate behavior.
 2. **Never import another domain's internals.** Use its `public` reader instead (the consumer declares its own interface). Cross-module imports create invisible coupling and make it impossible to change one domain without breaking another.
-3. **Never add layers that do not exist.** The pattern is endpoint → usecase → repository (concrete golden source) + client ports → adapters. The golden source has no interface — postgres is effectively immutable. Only external integrations get a port, as an anti-corruption layer. Extra layers do not add safety; they add surface area for bugs. `client/` is outbound only; exposed reads live in `public/`.
+3. **Never add layers that do not exist.** The pattern is endpoint → usecase → repository (concrete golden source) + client ports → adapters. The golden source has no interface — postgres is effectively immutable. Only external integrations get a port, as an anti-corruption layer. Extra layers do not add safety; they add surface area for bugs. Cohesive internal components, such as the optional module-local AI packages in [ai.md](docs/internals/ai.md), are not new mandatory layers and must preserve these boundaries. `client/` is outbound only; exposed reads live in `public/`.
 
 See [docs/internals/architecture.md](docs/internals/architecture.md) for delivery mechanisms, module boundaries, repositories, clients, and external integrations.
 
@@ -47,6 +47,7 @@ CRITICAL: Only load the reference below that matches your current task. Do NOT r
 | Task                                                                                            | Load                                                                                               |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Implement a domain feature (model → repository → usecase → endpoint)                            | [docs/internals/coding-patterns.md](docs/internals/coding-patterns.md) + mirror `internal/ticket/` |
+| Add agents, prompts, tool calling, inference providers, or MCP                                  | [docs/internals/ai.md](docs/internals/ai.md)                                                       |
 | Add a layer, protocol, or module boundary                                                       | [docs/internals/architecture.md](docs/internals/architecture.md) + mirror `internal/ticket/`       |
 | Add or change platform infrastructure (config, httpx, o11y, store, broker adapters)             | [docs/internals/platform.md](docs/internals/platform.md)                                           |
 | Add or consume an external integration (storage, email, cache, third-party API)                 | [docs/internals/external-integrations.md](docs/internals/external-integrations.md)                 |
@@ -54,7 +55,7 @@ CRITICAL: Only load the reference below that matches your current task. Do NOT r
 | Read another module's data                                                                      | [docs/internals/cross-module-reads.md](docs/internals/cross-module-reads.md)                       |
 | Understand the architecture or runtime flow                                                     | [docs/internals/architecture.md](docs/internals/architecture.md)                                   |
 | Look up a term or find where code lives                                                         | [docs/internals/glossary.md](docs/internals/glossary.md)                                           |
-| Verify a change                                                                               | [docs/internals/testing.md](docs/internals/testing.md)                                             |
+| Verify a change                                                                                 | [docs/internals/testing.md](docs/internals/testing.md)                                             |
 
 ## Plans and work artifacts
 

@@ -24,6 +24,7 @@ task
 - [Commands reference](docs/internals/commands.md)
 - [Messaging](docs/internals/messaging.md)
 - [External integrations](docs/internals/external-integrations.md)
+- [AI capabilities](docs/internals/ai.md) — module-local agents, prompts, tool calling, inference providers, and MCP
 - [Cross-module reads](docs/internals/cross-module-reads.md)
 - [Versioning](docs/internals/versioning.md)
 - [Testing](docs/internals/testing.md)
