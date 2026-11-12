@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/charmingruby/lab/internal/platform/validator"
 )
 
 var (
@@ -25,11 +27,15 @@ func ParseRequest[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 		return nil, err
 	}
 
-	val := validatorFromContext(r.Context())
-	if err := val.Validate(obj); err != nil {
-		writeResponse(w, http.StatusBadRequest, map[string]string{
-			"message": fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
-		})
+	if err := validator.Validate(obj); err != nil {
+		response := ErrorResponse{
+			Message: fmt.Sprintf("%s: %s", ErrInvalidPayload.Error(), err.Error()),
+		}
+		if validationErr, ok := errors.AsType[*validator.ValidationError](err); ok {
+			response.Fields = validationErr.Fields
+		}
+
+		writeResponse(w, http.StatusBadRequest, response)
 
 		return nil, err
 	}

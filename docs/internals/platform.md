@@ -70,11 +70,12 @@ internal/platform/httpx/
 ├── server.go       # server, middleware, probes
 ├── request.go      # parse + validate
 ├── response.go     # success and error writers
-├── validator.go
 └── client.go       # outbound HTTP client
 ```
 
 It carries no domain knowledge: handlers, DTOs, and route registration belong to the domain.
+
+Request validation calls `internal/platform/validator.Validate` directly, without context or middleware. Invalid payloads return HTTP 400 with a `message`; validation failures also include `fields`, each containing the JSON field path, validation `code`, and translated `message`.
 
 ## Config
 

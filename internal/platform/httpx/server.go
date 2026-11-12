@@ -23,7 +23,6 @@ func NewServer(port string) (*Server, chi.Router) {
 	r.Use(
 		withRecovery,
 		withLogging,
-		withValidator(newValidator()),
 	)
 
 	registerProbes(r)
@@ -59,16 +58,6 @@ func registerProbes(r chi.Router) {
 	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-}
-
-func withValidator(v *validator) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := validatorToContext(r.Context(), v)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
 }
 
 func withLogging(next http.Handler) http.Handler {

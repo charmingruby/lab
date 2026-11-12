@@ -6,11 +6,13 @@ import (
 	"net/http"
 
 	"github.com/charmingruby/lab/internal/platform/o11y/logging"
+	"github.com/charmingruby/lab/internal/platform/validator"
 	"github.com/charmingruby/lab/internal/shared/customerr"
 )
 
 type ErrorResponse struct {
-	Message string `json:"message"`
+	Message string                 `json:"message"`
+	Fields  []validator.FieldError `json:"fields,omitempty"`
 }
 
 func WriteOKResponse(w http.ResponseWriter, v any) {
