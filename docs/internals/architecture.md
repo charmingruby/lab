@@ -15,18 +15,18 @@ Source: [internal/ticket/ticket.go](../../internal/ticket/ticket.go)
 ## Where code lives
 
 - `cmd/api/main.go` — boots server, mounts domains, starts listening.
+- `config/` — typed application configuration loaded from the environment at boot.
 - `internal/<domain>/` — one ports-and-adapters module per bounded context.
   - `<domain>.go` — composition root (wires everything, including cross-domain read assembly)
   - `http/endpoint/` — request DTO + handler + versioned route registration (in `New`)
   - `usecase/` — business actions, one file per use case
-  - `ai/` — optional module-local agents, runtime, tool adapters, and prompts; conventions in [ai.md](./ai.md).
   - `model/` — entities, invariants, state changes
   - `event/` — module-owned versioned event contracts, outside `delivery/`; contracts used by two or more domains live in `internal/shared/event/`. Shape owned by [messaging.md](./messaging.md#event-contracts).
   - `repository/` — the golden source, concrete (no interface). Queries are prepared once in the constructor and executed through the store's helpers (for SQL, `postgrex.One`, `Many`, `Exec`, `ExecReturning`).
   - `client/` — outbound ports this domain consumes. Shape owned by [external-integrations.md](./external-integrations.md). Never hosts exposed reads — those live in `public/`.
   - `public/` — concrete readers for other domains. Shape owned by [cross-module-reads.md](./cross-module-reads.md).
 - `internal/shared/` — shared domain language: domain types, typed errors, and ports + adapters used by two or more domains. See the directory for the current set.
-- `internal/platform/` — app infrastructure with zero domain awareness: `config`, transport (`httpx`), observability (`o11y/<signal>`), system-of-record toolkit (`store/<provider>`), and broker ports/adapters (`messaging`). Not every capability is a port — only messaging is. Full taxonomy: [platform.md](./platform.md).
+- `internal/platform/` — app infrastructure with zero domain awareness: transport (`httpx`), observability (`o11y/<signal>`), system-of-record toolkit (`store/<provider>`), and broker ports/adapters (`messaging`). Not every capability is a port — only messaging is. Full taxonomy: [platform.md](./platform.md).
 - `pkg/` — reserved for code exposed to the outside world.
 
 ## Cross-domain communication
@@ -57,8 +57,6 @@ endpoint → usecase → repository (concrete golden source)
                    → model
 ```
 
-Cohesive internal components may support usecases without becoming new architectural layers; module-local AI execution follows [ai.md](./ai.md).
-
 ### Delivery mechanism layout
 
 A mechanism is any transport the domain speaks:
@@ -88,6 +86,5 @@ Wire the module in `<domain>/<domain>.go`. Expose concrete read adapters to othe
 - [Platform](./platform.md) — capability taxonomy, stores, brokers, observability, config
 - [Coding patterns](./coding-patterns.md) — complete implementation reference per layer
 - [External integrations](./external-integrations.md) — storage, email, cache, third-party APIs
-- [AI capabilities](./ai.md) — module-local agents, prompts, tool calling, inference providers, and MCP
 - [Messaging](./messaging.md) — event contracts, publishers, listeners, wiring in `main`
 - [Versioning](./versioning.md) — endpoint-level versioning

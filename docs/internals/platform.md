@@ -8,7 +8,6 @@ Platform is where external SDKs get wrapped and where process-level concerns liv
 
 | Capability  | Shape                       | Layout                                |
 | ----------- | --------------------------- | ------------------------------------- |
-| `config`    | toolkit                     | `internal/platform/config/`           |
 | `httpx`     | toolkit                     | `internal/platform/httpx/`            |
 | `o11y`      | toolkit                     | `internal/platform/o11y/<signal>/`    |
 | `store`     | toolkit                     | `internal/platform/store/<provider>/` |
@@ -19,7 +18,7 @@ Platform is where external SDKs get wrapped and where process-level concerns liv
 Platform capabilities take one of two shapes. Only the first is a port:
 
 1. **Port + adapter + raw client** — the app talks to an external system through a swappable contract. Inside platform this is only `messaging`.
-2. **Toolkit** — a thin, provider-specific helper used directly, with no port: `store`, `o11y`, `httpx`, `config`.
+2. **Toolkit** — a thin, provider-specific helper used directly, with no port: `store`, `o11y`, `httpx`.
 
 Do not invent a port for a toolkit. External integrations are the exception that proves the rule: their port lives in the consuming domain's `client/`, and platform only provides the raw client.
 
@@ -79,7 +78,7 @@ Request validation calls `internal/platform/validator.Validate` directly, withou
 
 ## Config
 
-- `internal/platform/config/` loads typed configuration from the environment once, at boot.
+- The root `config/` package loads typed application configuration from the environment once, at boot. It lives outside `internal/platform/`.
 - Defaults and validation live with the config; invalid or missing required configuration aborts startup.
 - One config per app. Shared platform packages never import it.
 - It exposes primitives (URL, port, secret, TTL), never a domain object.
@@ -118,7 +117,7 @@ Semantics of publishers, listeners, and event contracts: [messaging.md](./messag
 | a new broker                           | `internal/platform/messaging/broker/<provider>/` plus the two adapters; ports unchanged |
 | a new observability signal             | `internal/platform/o11y/<signal>/`                                                      |
 | new HTTP behavior                      | `internal/platform/httpx/`                                                              |
-| new configuration or env var           | `internal/platform/config/`                                                             |
+| new configuration or env var           | `config/`                                                                               |
 
 ## Rules
 

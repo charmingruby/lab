@@ -91,7 +91,7 @@ Domain types, typed errors, ports + adapters used by 2+ domains. See directory: 
 
 #### platform
 
-App infrastructure with zero domain awareness: `config`, `httpx`, `o11y`, `store`, and `messaging`. Only messaging is port + adapter. Rule: [platform.md](./platform.md)
+App infrastructure with zero domain awareness: `httpx`, `o11y`, `store`, and `messaging`. Only messaging is port + adapter. Rule: [platform.md](./platform.md)
 
 #### store
 
@@ -99,7 +99,7 @@ System-of-record toolkit under `internal/platform/store/<provider>/`; no port, a
 
 #### config
 
-Typed environment configuration loaded at boot from `internal/platform/config/`. Rule: [platform.md](./platform.md#config)
+Typed environment configuration loaded at boot from the root `config/` package. Rule: [platform.md](./platform.md#config)
 
 #### pkg (reserved)
 
