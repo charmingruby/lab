@@ -39,7 +39,7 @@ Full rule + example: [cross-module-reads.md](./cross-module-reads.md).
 
 Usecases map domain outcomes to typed errors; endpoints map typed errors to transport statuses. Usecases never return raw strings or unwrapped infrastructure errors.
 
-Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr/customerr.go), [internal/platform/httpx/response.go](../../internal/platform/httpx/response.go)
+Source: [internal/shared/customerr/customerr.go](../../internal/shared/customerr/customerr.go), [internal/shared/customerr/httperr.go](../../internal/shared/customerr/httperr.go)
 
 ## Transaction safety
 

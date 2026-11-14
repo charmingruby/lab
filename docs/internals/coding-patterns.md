@@ -280,7 +280,7 @@ One delivery mechanism. Parse the request, call the use case, write the response
 
 - ✅ A request DTO per endpoint with validation tags.
 - ✅ Setters answer "created", reads answer "ok".
-- ✅ Every error goes to the shared error writer (typed errors map to statuses per [architecture.md](./architecture.md#error-flow); missing path params use `httpx.WriteBadRequest`).
+- ✅ Every application error goes to `customerr.HandleErr` (typed errors map to statuses per [architecture.md](./architecture.md#error-flow); missing path params use `customerr.WriteBadRequest`).
 - ✅ Path params via the shared helper.
 - ✅ Group routes per aggregate under `/v1/...` in `New(r chi.Router, uc *usecase.Usecase)`.
 - ❌ No business logic or repository access in the endpoint. ❌ Don't hand-roll decode/validate.
@@ -326,7 +326,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		Priority:    request.Priority,
 	})
 	if err != nil {
-		httpx.HandleErr(w, r, err)
+		customerr.HandleErr(w, r, err)
 		return
 	}
 

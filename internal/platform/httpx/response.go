@@ -2,12 +2,9 @@ package httpx
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
-	"github.com/charmingruby/lab/internal/platform/o11y/logging"
 	"github.com/charmingruby/lab/internal/platform/validator"
-	"github.com/charmingruby/lab/internal/shared/customerr"
 )
 
 type ErrorResponse struct {
@@ -28,33 +25,11 @@ func WriteEmptyResponse(w http.ResponseWriter) {
 }
 
 func WriteBadRequest(w http.ResponseWriter, r *http.Request, err error) {
-	HandleErr(w, r, customerr.Validation(err.Error()))
+	writeResponse(w, http.StatusBadRequest, err.Error())
 }
 
-func HandleErr(w http.ResponseWriter, r *http.Request, err error) {
-	log := logging.LoggerFromContext(r.Context())
-
-	if cerr, ok := errors.AsType[*customerr.Error](err); ok {
-		httpErr := customerr.MapToHTTP(*cerr)
-
-		log.Warn("application error",
-			"type", httpErr.OriginalError.Type,
-			"message", httpErr.Message,
-			"original_error", httpErr.OriginalError.Error(),
-		)
-
-		writeResponse(w, httpErr.Status, ErrorResponse{
-			Message: httpErr.Message,
-		})
-
-		return
-	}
-
-	log.Error("internal server error", "error", err)
-
-	writeResponse(w, customerr.UnhandledHTTPError.Status, ErrorResponse{
-		Message: customerr.UnhandledHTTPError.Message,
-	})
+func WriteErrorResponse(w http.ResponseWriter, status int, response ErrorResponse) {
+	writeResponse(w, status, response)
 }
 
 func writeResponse(w http.ResponseWriter, status int, v any) {

@@ -1,6 +1,12 @@
 package customerr
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+
+	"github.com/charmingruby/lab/internal/platform/httpx"
+	"github.com/charmingruby/lab/internal/platform/o11y/logging"
+)
 
 type HTTPError struct {
 	OriginalError Error
@@ -8,12 +14,35 @@ type HTTPError struct {
 	Status        int
 }
 
-var UnhandledHTTPError = HTTPError{
-	Status:  http.StatusInternalServerError,
-	Message: "Internal Server Error",
+func HandleHTTPErr(w http.ResponseWriter, r *http.Request, err error) {
+	log := logging.LoggerFromContext(r.Context())
+
+	if cerr, ok := errors.AsType[*Error](err); ok {
+		httpErr := mapToHTTP(*cerr)
+
+		log.Warn("application error",
+			"type", httpErr.OriginalError.Type,
+			"message", httpErr.Message,
+			"original_error", httpErr.OriginalError.Error(),
+		)
+
+		httpx.WriteErrorResponse(w, httpErr.Status, httpx.ErrorResponse{
+			Message: httpErr.Message,
+		})
+
+		return
+	}
+
+	log.Error("internal server error", "error", err)
+
+	unhandledErr := unhandledHTTPError()
+
+	httpx.WriteErrorResponse(w, unhandledErr.Status, httpx.ErrorResponse{
+		Message: unhandledErr.Message,
+	})
 }
 
-func MapToHTTP(err Error) HTTPError {
+func mapToHTTP(err Error) HTTPError {
 	httpErr := HTTPError{
 		Message:       err.Message,
 		OriginalError: err,
@@ -38,5 +67,12 @@ func MapToHTTP(err Error) HTTPError {
 		return httpErr
 	}
 
-	return UnhandledHTTPError
+	return unhandledHTTPError()
+}
+
+func unhandledHTTPError() HTTPError {
+	return HTTPError{
+		Status:  http.StatusInternalServerError,
+		Message: "Internal Server Error",
+	}
 }

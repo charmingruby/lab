@@ -74,6 +74,8 @@ internal/platform/httpx/
 
 It carries no domain knowledge: handlers, DTOs, and route registration belong to the domain.
 
+`httpx.WriteErrorResponse` writes a supplied HTTP status and error payload. Application error classification, logging, and status mapping live in `internal/shared/customerr/httperr.go`, which depends on `httpx`, never the reverse. Platform packages may depend on one another, but never on application packages outside `internal/platform/`.
+
 Request validation calls `internal/platform/validator.Validate` directly, without context or middleware. Invalid payloads return HTTP 400 with a `message`; validation failures also include `fields`, each containing the JSON field path, validation `code`, and translated `message`.
 
 ## Config

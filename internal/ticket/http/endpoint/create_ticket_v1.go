@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/charmingruby/lab/internal/platform/httpx"
+	"github.com/charmingruby/lab/internal/shared/customerr"
 	"github.com/charmingruby/lab/internal/ticket/usecase"
 )
 
@@ -31,7 +32,7 @@ func (e *Endpoint) CreateTicketV1(w http.ResponseWriter, r *http.Request) {
 		Priority:    request.Priority,
 	})
 	if err != nil {
-		httpx.HandleErr(w, r, err)
+		customerr.HandleHTTPErr(w, r, err)
 		return
 	}
 
